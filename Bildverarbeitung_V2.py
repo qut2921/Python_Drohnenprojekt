@@ -305,3 +305,9 @@ def module_main_mission_1(
             break
     vid.release()
     cv2.destroyAllWindows()
+
+def module_main_mission_2(
+        vid, colorProfile, min_area,
+        pitch, roll, altitude, heading, speed, gps_position
+):
+    roll
