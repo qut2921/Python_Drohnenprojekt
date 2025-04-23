@@ -311,3 +311,5 @@ def module_main_mission_2(
         pitch, roll, altitude, heading, speed, gps_position
 ):
     roll
+    yaw
+    xxx
