@@ -2,6 +2,7 @@ import os
 import time  # type:ignore
 import cv2  # type:ignore
 import numpy as np  # type:ignore
+import datetime  # type:ignore
 
 
 def set_colorProfiles(n):
@@ -130,6 +131,14 @@ def calculate_gps(
     return x_distance, y_distance, n_ned, e_ned
 
 
+def remove_noise(mask):
+    """Remove noise from the mask using morphological operations."""
+    kernel = np.ones((5, 5), np.uint8)
+    mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel)  # Remove small dots
+    mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)  # Fill small holes
+    return mask
+
+
 def draw_rectangle_with_text(
         frame, name, x, y, w, h,
         x_distance, y_distance):
@@ -178,12 +187,10 @@ def locate_object(
     mask = cv2.inRange(hsv, hsv_lower, hsv_upper)
 
     # remove noise from mask
-    kernel = np.ones((5, 5), np.uint8)
-    mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel)  # Remove small dots
-    mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)  # Fill small holes
+    # mask = remove_noise(mask)
 
     # find contours in the mask
-    contours, hierarchy = cv2.findContours(
+    contours, _ = cv2.findContours(
         mask.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
 
     if contours:
@@ -220,7 +227,7 @@ def locate_object(
 
 def create_directory(sequence):
     """Create a directory for saving images.
-    
+
     sequence: specifies the sequence of image savings based on the mission plan
     """
     output_dir = "BildsequenzTest_{}".format(sequence)
@@ -234,9 +241,15 @@ def save_image(
         frame, frame_amount, output_dir, sequence):
     """Save the captured image to the specified directory."""
     # Capture frame
+    image_filename = '/frame_{}_{}.jpg'.format(sequence-1, frame_amount)
     cv2.imwrite(
-        output_dir + '/frame_{}_{}.jpg'.format(sequence-1, frame_amount), frame)
+        output_dir + image_filename, frame)
     print("Captured frame...")
+    return image_filename
+
+
+def save_data():
+    abc = 0
 
 
 def test_velocity():
@@ -297,6 +310,67 @@ def module_main_mission_1(
                 save_image(frame, image_count, output_dir, sequence)
                 last_time_saved = time.time()
                 image_count += 1
+
+        else:
+            new_dir = True
+
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            break
+    vid.release()
+    cv2.destroyAllWindows()
+
+
+def module_main_mission_1_v2(
+        vid, pitch, roll, altitude,
+        heading, speed, gps_position
+):
+
+    # Initialize object detection variables
+    detectedObject = False
+    speed = speed
+
+    # Initialize image saving variables
+    new_dir = True
+    last_time_saved = time.time()
+    save_delay = 1  # Save image every 1 seconds
+    sequence = 0
+
+    while True:
+
+        # Capture frame and convert to HSV
+        success, hsv, frame = capture_and_convert(vid)
+        if not success:
+            break
+
+        velocity = test_velocity()
+        altitude = altitude
+        heading = heading
+        gps_position = gps_position
+        pitch = pitch
+        roll = roll
+
+        # Display the original frame and the grayscale frame
+        cv2.imshow('Original Frame', frame)
+
+        if velocity < 5:
+
+            # Check if new directory has to be created
+            if new_dir == True:
+                output_dir = create_directory(sequence)
+                new_dir = False
+                image_count = 0  # Reset numbering for images in new directory
+                sequence += 1
+
+            # Only save image every 1 seconds
+            if time.time() - last_time_saved >= save_delay:
+                image_filename = save_image(
+                    frame, image_count, output_dir, sequence)
+                last_time_saved = time.time()
+                image_count += 1
+                with open(f"{output_dir}/image_saved.csv", "a") as log_file:
+                    log_file.write(
+                        f"{image_filename}, {pitch}, {roll}, {altitude}, {heading}, {gps_position}\n")
+                print("Captured frame...")
 
         else:
             new_dir = True
