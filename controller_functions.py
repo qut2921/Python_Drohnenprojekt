@@ -6,7 +6,7 @@ import asyncio
 from mavsdk import System
 
 
-async def connect_drone():
+async def connect_drone() -> System:
     """
     Connects to the drone via MAVSDK.
 
@@ -24,7 +24,7 @@ async def arm_and_takeoff(drone: System, target_altitude: float):
     """
     Arms the drone and performs an automatic takeoff.
 
-    Args:
+    Inputs:
         drone (System): MAVSDK drone object to send commands.
         target_altitude (float, optional): Target altitude in meters.
         Default is 10.0 m.
