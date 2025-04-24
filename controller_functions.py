@@ -8,7 +8,10 @@ from mavsdk import System
 
 async def connect_drone():
     """
-    Connect to the drone and return the drone object.
+    Connects to the drone via MAVSDK.
+
+    Returns:
+        System: The connected MAVSDK drone object.
     """
     drone = System()
     print("---Connecting to drone...")
@@ -19,7 +22,19 @@ async def connect_drone():
 
 async def arm_and_takeoff(drone: System, target_altitude: float):
     """
-    Arm the drone and take off to a specified altitude.
+    Arms the drone and performs an automatic takeoff.
+
+    Args:
+        drone (System): MAVSDK drone object to send commands.
+        target_altitude (float, optional): Target altitude in meters.
+        Default is 10.0 m.
+
+    Steps:
+        - Waits for connection to the drone
+        - Arms the drone
+        - Sets the target takeoff altitude
+        - Initiates takeoff
+        - Waits until target altitude (±0.5m) is reached
     """
     print("---Arming...")
     await drone.action.arm()
