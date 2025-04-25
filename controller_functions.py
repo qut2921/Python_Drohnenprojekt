@@ -20,7 +20,7 @@ async def connect_drone() -> System:
     return drone
 
 
-async def default_arm_and_takeoff(drone: System, target_altitude: float):
+async def default_arm_and_takeoff(drone: System, target_altitude: float = 10.0):
     """
     Arms the drone and performs an automatic takeoff.
 
@@ -36,18 +36,23 @@ async def default_arm_and_takeoff(drone: System, target_altitude: float):
         - Initiates takeoff
         - Waits until target altitude (±0.5m) is reached
     """
+    
+    # await drone.param.set_param_float("MPC_TKO_SPEED", 1.0) # 1 m/s
+    await drone.action.set_takeoff_altitude(target_altitude)
+
     print("---Arming...")
     await drone.action.arm()
     print("Drone armed")
 
     print(f"Taking off to {target_altitude} m")
-    await drone.action.set_takeoff_altitude(target_altitude)
     await drone.action.takeoff()
+    await asyncio.sleep(1)
+    print("Taking off...")
     # Waits until the drone reaches the target altitude
     async for position in drone.telemetry.position():
         current_height = position.relative_altitude_m
         print(f"\rCurrent height: {current_height:.1f} m", end="")
-        if current_height >= target_altitude - 0.2:
+        if abs(current_height - target_altitude) < 0.3:
             print("\nTarget altitude reached")
             break
         await asyncio.sleep(0.2)
@@ -157,11 +162,14 @@ async def default_land_and_disarm(drone: System):
         - Initiates landing
     """
     print("Landing...")
-    await drone.action.set_flight_mode("LAND")
-    print("Mode set to LAND")
     await drone.action.land()
-    if drone.telemetry.landed_state() == "Landed":
-        print("Drone is landed")
+    async for position in drone.telemetry.position():
+        current_height = position.relative_altitude_m
+        print(f"\rCurrent height: {current_height:.1f} m", end="")
+        if abs(current_height) < 0.1:
+            print("\nLanded")
+            break
+        await asyncio.sleep(0.2)
     print("Disarming...")
     await drone.action.disarm()
     print("Drone disarmed")
