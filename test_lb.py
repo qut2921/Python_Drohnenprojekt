@@ -37,10 +37,6 @@ async def mission_1():
     # 1. Connect to the drone
     drone = await controller_functions.connect_drone()
 
-    async for flight_mode in drone.telemetry.flight_mode():
-        print(f"Current flight mode: {flight_mode}")
-        break
-
     # 2. Mission locations
     home_location = await drone.telemetry.home().__anext__()
     home_lat = home_location.latitude_deg
