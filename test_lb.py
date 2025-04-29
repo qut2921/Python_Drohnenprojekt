@@ -55,7 +55,7 @@ async def mission_1():
     """
     # 4. Start photo captur
     print("Starting photo capture...")
-    await module_main_mission_1(...)
+    await module_main_mission_1(....)
     print("Photo capture started.")
     """
     # 5. Fly to each location
