@@ -61,7 +61,7 @@ async def mission_1():
 # Mission 1 (MissionPlaner)
 async def mission_1_planner():
     # 1. Connect to the drone
-    drone = await controller_functions.connect_drone()
+    drone = await cl.connect_drone()
 
     # 2. Create Mission Items
     home_position = await drone.telemetry.home().__anext__()
@@ -114,7 +114,7 @@ async def mission_1_planner():
         await asyncio.sleep(0.5)
 
     # 6. Land and Disarm
-    await controller_functions.default_land_and_disarm(drone)
+    await cl.default_land_and_disarm(drone)
 
 # Run mission 1
 asyncio.run(mission_1())
