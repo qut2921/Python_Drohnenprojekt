@@ -4,6 +4,7 @@ Comands to controle the mission with repeating modules
 """
 import asyncio
 from mavsdk import System
+from mavsdk.offboard import PositionNedYaw
 
 
 async def connect_drone() -> System:
@@ -68,6 +69,34 @@ async def default_arm_and_takeoff(drone: System, target_altitude: float = 10.0):
             break
         await asyncio.sleep(0.2)
 
+
+async def change_altitude(drone, start_altitude: float,
+                          target_altitude: float):
+    # Startposition (5 m über Boden)
+    await drone.offboard.set_position_ned(PositionNedYaw(0.0, 0.0, -5.0, 0.0))
+    await drone.offboard.start()
+
+    print("Steige auf 10 m...")
+    # Zielposition (10 m über Boden)
+    await drone.offboard.set_position_ned(PositionNedYaw(0.0, 0.0, -10.0, 0.0))
+    await asyncio.sleep(5)  # Warten, bis Zielhöhe erreicht ist
+
+    await drone.offboard.stop()
+
+
+
+async def change_altitude(drone, start_altitude: float,
+                          target_altitude: float):
+    # Startposition (5 m über Boden)
+    await drone.offboard.set_position_ned(PositionNedYaw(0.0, 0.0, -10.0, 0.0))
+    await drone.offboard.start()
+
+    print("Steige auf 10 m...")
+    # Zielposition (10 m über Boden)
+    await drone.offboard.set_position_ned(PositionNedYaw(0.0, 0.0, -15.0, 0.0))
+    await asyncio.sleep(5)  # Warten, bis Zielhöhe erreicht ist
+
+    await drone.offboard.stop()
 
 async def check_battery(drone: System):
     """
@@ -195,6 +224,6 @@ async def default_land_and_disarm(drone: System):
         if not state:
             print("✅ Drone disarmed")
             break
-        await asyncio.sleep(0.2)   
+        await asyncio.sleep(0.2)
     print("✅ Mission completed ✅")
     print("----------------------")
