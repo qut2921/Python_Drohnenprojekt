@@ -1,4 +1,4 @@
-import image_processing  # type: ignore
+import modules.image_processing as image_processing  # type: ignore
 
 pitch = 0  # [degrees] dummy variable
 roll = 0  # [degrees] dummy variable
