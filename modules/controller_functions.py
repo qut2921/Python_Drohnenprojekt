@@ -39,7 +39,7 @@ async def arm_drone(drone: System):
         - Waits for connection to the drone
         - Arms the drone
     """
-    print("🔄 Arming...")
+    print("\n🔄 Arming...")
     try:
         await drone.action.arm()
     except Exception as e:
@@ -80,7 +80,7 @@ async def default_takeoff(drone: System, target_altitude: float = 10.0):
     # Waits until the drone reaches the target altitude
     async for position in drone.telemetry.position():
         current_height = position.relative_altitude_m
-        print(f"\r⬆️ Current height: {current_height:.1f}", end="")
+        print(f"\r⬆️ Current height: {current_height:.1f} m", end="")
         if abs(current_height - target_altitude) < 0.1:
             print("\n✅ Target altitude reached")
             break
@@ -199,7 +199,7 @@ async def goto_location(drone: System, target_latitude: float,
         current_height = position.relative_altitude_m
 
         print(
-            f"\r➡️ Current location: {current_latitude:.7f}, "t
+            f"\r➡️ Current location: {current_latitude:.7f}, "
             f"{current_longitude:.7f}, {current_height:.1f} m",
             end=""
         )

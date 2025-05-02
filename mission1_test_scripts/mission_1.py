@@ -1,4 +1,4 @@
-import modules.controller_functions as cl# type: ignore
+import modules.controller_functions as cl # type: ignore
 from mavsdk.mission import MissionItem, MissionPlan
 from mavsdk.mission import Mission
 import asyncio
@@ -29,7 +29,7 @@ async def mission_1():
     home_lat = home_location.latitude_deg
     home_lon = home_location.longitude_deg
     mission_locations = [
-        (home_lat, home_lon),  # Start at home
+        #(home_lat, home_lon),  # Start at home
         (48.7675058, 11.3364601),
         (48.7672850, 11.3361733),
         (48.7674827, 11.3358296),
