@@ -28,7 +28,27 @@ async def connect_drone() -> System:
     return drone
 
 
-async def default_arm_and_takeoff(drone: System, target_altitude: float = 10.0):
+async def arm_drone(drone: System):
+    """
+    Arms the drone.
+
+    Inputs:
+        drone (System): MAVSDK drone object to send commands.
+
+    Steps:
+        - Waits for connection to the drone
+        - Arms the drone
+    """
+    print("🔄 Arming...")
+    try:
+        await drone.action.arm()
+    except Exception as e:
+        print(f"❌ Error arming drone: {e}")
+        return
+    print("✅ Drone armed")
+
+
+async def default_takeoff(drone: System, target_altitude: float = 10.0):
     """
     Arms the drone and performs an automatic takeoff.
 
@@ -49,15 +69,6 @@ async def default_arm_and_takeoff(drone: System, target_altitude: float = 10.0):
     await drone.action.set_takeoff_altitude(target_altitude)
 
     print("Start Mission")
-    print("\n🔄 Arming...")
-    try:
-        await drone.action.arm()
-    except Exception as e:
-        print(f"❌ Error arming drone: {e}")
-        return
-    print("✅ Drone armed")
-
-    await asyncio.sleep(5)
 
     print(f"\n🟣 Taking off to {target_altitude} m")
     try:
@@ -188,7 +199,7 @@ async def goto_location(drone: System, target_latitude: float,
         current_height = position.relative_altitude_m
 
         print(
-            f"\r➡️ Current location: {current_latitude:.7f}, "
+            f"\r➡️ Current location: {current_latitude:.7f}, "t
             f"{current_longitude:.7f}, {current_height:.1f} m",
             end=""
         )
