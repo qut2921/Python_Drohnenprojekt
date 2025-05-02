@@ -45,26 +45,32 @@ async def default_arm_and_takeoff(drone: System, target_altitude: float = 10.0):
         - Waits until target altitude (±0.5m) is reached
     """
 
-    # await drone.param.set_param_float("MPC_TKO_SPEED", 1.0) # 1 m/s
+    await drone.param.set_param_float("MPC_TKO_SPEED", 2.0) # 2 m/s
     await drone.action.set_takeoff_altitude(target_altitude)
 
     print("Start Mission")
     print("\n🔄 Arming...")
-    await drone.action.arm()
-    await asyncio.sleep(1)
+    try:
+        await drone.action.arm()
+    except Exception as e:
+        print(f"❌ Error arming drone: {e}")
+        return
     print("✅ Drone armed")
 
     await asyncio.sleep(5)
 
     print(f"\n🟣 Taking off to {target_altitude} m")
-    await drone.action.takeoff()
-    await asyncio.sleep(1)
+    try:
+        await drone.action.takeoff()
+    except Exception as e:
+        print(f"❌ Error taking off: {e}")
+        return
     print("🔄 Taking off...")
     # Waits until the drone reaches the target altitude
     async for position in drone.telemetry.position():
         current_height = position.relative_altitude_m
         print(f"\r⬆️ Current height: {current_height:.1f}", end="")
-        if abs(current_height - target_altitude) < 0.3:
+        if abs(current_height - target_altitude) < 0.1:
             print("\n✅ Target altitude reached")
             break
         await asyncio.sleep(0.2)
@@ -84,7 +90,6 @@ async def change_altitude(drone, start_altitude: float,
     await drone.offboard.stop()
 
 
-
 async def change_altitude(drone, start_altitude: float,
                           target_altitude: float):
     # Startposition (5 m über Boden)
@@ -97,6 +102,7 @@ async def change_altitude(drone, start_altitude: float,
     await asyncio.sleep(5)  # Warten, bis Zielhöhe erreicht ist
 
     await drone.offboard.stop()
+
 
 async def check_battery(drone: System):
     """
@@ -182,15 +188,15 @@ async def goto_location(drone: System, target_latitude: float,
         current_height = position.relative_altitude_m
 
         print(
-            f"\r➡️ Current location: {current_latitude}, "
-            f"{current_longitude}, {current_height:.1f} m",
+            f"\r➡️ Current location: {current_latitude:.7f}, "
+            f"{current_longitude:.7f}, {current_height:.1f} m",
             end=""
         )
 
         # Checks if the drone reached target
         if (abs(current_latitude - target_latitude) < 0.00001 and
                 abs(current_longitude - target_longitude) < 0.00001 and
-                abs(current_height - target_altitude) < 0.2):
+                abs(current_height - target_altitude) < 0.1):
             print("\n✅ Target location reached")
             break
         await asyncio.sleep(0.2)
@@ -207,8 +213,12 @@ async def default_land_and_disarm(drone: System):
         - Sets the drone's mode to "LAND"
         - Initiates landing
     """
+    try:
+        await drone.action.land()
+    except Exception as e:
+        print(f"❌ Error landing: {e}")
+        return
     print("\n🔄 Landing...")
-    await drone.action.land()
     async for position in drone.telemetry.position():
         current_height = position.relative_altitude_m
         print(f"\r⬇️ Current height: {current_height:.1f} m", end="")
@@ -216,14 +226,15 @@ async def default_land_and_disarm(drone: System):
             print("\n✅ Landed")
             break
         await asyncio.sleep(0.2)
+    
+    # Disarm the drone after landing
+    await asyncio.sleep(2)
     print("\n🔄 Disarming...")
-    await drone.action.disarm()
+    try:
+        await drone.action.disarm()
+        print("✅ Drone disarmed")
+    except Exception as e:
+        print(f"❌ Failed to disarm: {e}")
 
-    # Waits until the drone is disarmed
-    async for state in drone.telemetry.armed():
-        if not state:
-            print("✅ Drone disarmed")
-            break
-        await asyncio.sleep(0.2)
     print("✅ Mission completed ✅")
     print("----------------------")
