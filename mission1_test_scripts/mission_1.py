@@ -19,19 +19,27 @@ async def mission_1():
     # 1. Connect to the drone
     drone = await cl.connect_drone()
 
-    # 2. Mission locations
+    # 2. Arm and Mission locations
+    # Arm the drone
+    await cl.arm_drone(drone)
+    await asyncio.sleep(2)
+
+    # Get the home location
     home_location = await drone.telemetry.home().__anext__()
     home_lat = home_location.latitude_deg
-    home_long = home_location.longitude_deg
+    home_lon = home_location.longitude_deg
     mission_locations = [
-        (home_lat, home_long + 0.0001),  # Location 1
-        (home_lat, home_long + 0.0004),  # Location 2
-        (home_lat, home_long + 0.0007),  # Location 3
+        (home_lat, home_lon),  # Start at home
+        (48.7675058, 11.3364601),
+        (48.7672850, 11.3361733),
+        (48.7674827, 11.3358296),
+        (48.7677421, 11.3361358),
+        (home_lat, home_lon),  # Return to home
     ]
 
-    # 3. Arm and take off to 5 meters
+    # 3. Take off to 5 meters
     target_altitude = 5.0
-    await cl.default_arm_and_takeoff(drone, target_altitude)
+    await cl.default_takeoff(drone, target_altitude)
     await asyncio.sleep(5)
 
     """
@@ -45,7 +53,7 @@ async def mission_1():
     for i, (latitude, longitude) in enumerate(mission_locations, start=1):
         print(
             f"\n🟣 Flying to location {i}/{len(mission_locations)}: "
-            f"{latitude}, {longitude}"
+            f"{latitude}, {longitude}, {target_altitude} m"
         )
         await cl.goto_location(drone, 
                                                  latitude, 
@@ -71,9 +79,11 @@ async def mission_1_planner():
     mission_items = []
 
     waypoints = [
-        (home_lat, home_lon + 0.0001),  # ca. 10m nach Osten
-        (home_lat, home_lon + 0.0002),
-        (home_lat, home_lon + 0.0003),
+        (48.7675058, 11.3364601),
+        (48.7672850, 11.3361733),
+        (48.7674827, 11.3358296),
+        (48.7677421, 11.3361358),
+        (home_lat, home_lon),  # Return to home
     ]
 
     for lat, lon in waypoints:
