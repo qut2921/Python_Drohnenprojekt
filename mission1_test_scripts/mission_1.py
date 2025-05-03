@@ -11,15 +11,29 @@ async def mission_1():
     """
     Mission 1
         1. Connect to the drone
-        2. Arm and take off to 5 meters
-        3. Fly to each location
-        4. Take a photo at each location
-        5. Land and disarm
+        2. User confirmation before arming
+        3. Arm the drone and set locations
+        4. Take off to 5 meters
+        5. Fly to each location
+        6. Wait for 5 seconds at each location
+        7. Land and disarm
     """
     # 1. Connect to the drone
     drone = await cl.connect_drone()
 
-    # 2. Arm and Mission locations
+    # 2. User confirmation before arming
+    while True:
+        user_input = input("🚦 Ready to arm and start mission? (y/n): ").strip().lower()
+        if user_input == "y":
+            print("✅ Starting mission...")
+            break
+        elif user_input == "n":
+            print("❌ Mission aborted by user.")
+            exit(0)
+        else:
+            print("⚠️ Please enter 'y' to start or 'n' to abort.")
+
+    # 3. Arm and Mission locations
     # Arm the drone
     await cl.arm_drone(drone)
     await asyncio.sleep(2)
@@ -37,7 +51,7 @@ async def mission_1():
         (home_lat, home_lon),  # Return to home
     ]
 
-    # 3. Take off to 5 meters
+    # 4. Take off to 5 meters
     target_altitude = 5.0
     await cl.default_takeoff(drone, target_altitude)
     await asyncio.sleep(5)
@@ -48,7 +62,7 @@ async def mission_1():
     await module_main_mission_1(....)
     print("Photo capture started.")
     """
-    # 5. Fly to each location
+    # 6. Fly to each location
     target_altitude = 10.0
     for i, (latitude, longitude) in enumerate(mission_locations, start=1):
         print(
@@ -62,7 +76,7 @@ async def mission_1():
         # Wait for 5 seconds at each location to take a photo
         await asyncio.sleep(5)
 
-    # 6. Land and disarm (last gps location must be the finsh)
+    # 7. Land and disarm (last gps location must be the finsh)
     await cl.default_land_and_disarm(drone)
 
 
