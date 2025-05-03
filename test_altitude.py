@@ -13,16 +13,27 @@ async def test_altitude():
     # 1 ️ Connect to the drone
     drone = await cl.connect_drone()
 
-    # 2 ️ Arm the drone
+    # 2  User confirmation before arming
+    while True:
+        user_input = input("🚦 Ready to arm and start mission? (y/n): ").strip().lower()
+        if user_input == "y":
+            print("✅ Starting mission...")
+            break
+        elif user_input == "n":
+            print("❌ Mission aborted by user.")
+            exit(0)
+        else:
+            print("⚠️ Please enter 'y' to start or 'n' to abort.")
+
+    # 3 ️ Arm the drone
     await cl.arm_drone(drone)
     await asyncio.sleep(2)
 
-    # 2  Take off to the first altitude
+    # 4  Take off to the first altitude
     await cl.default_takeoff(drone, altitudes[0])
-    await drone.action.hold()
     await asyncio.sleep(2)
 
-    # 3  Loop through the remaining altitudes
+    # 5  Loop through the remaining altitudes
     home_position = await drone.telemetry.home().__anext__()
     latitude = home_position.latitude_deg
     longitude = home_position.longitude_deg
@@ -35,7 +46,7 @@ async def test_altitude():
         await drone.action.hold()
         await asyncio.sleep(5)
 
-    # 4  Land
+    # 6  Land
     await cl.default_land_and_disarm(drone)
 
 

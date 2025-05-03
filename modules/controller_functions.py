@@ -17,13 +17,12 @@ async def connect_drone() -> System:
     drone = System()
     print("----------------------")
     print("🔄 Connecting to drone...")
-    await drone.connect(system_address="udp://:14540")
-
-    # Waits for the drone to connect
-    async for state in drone.core.connection_state():
-        if state.is_connected:
-            print("✅ Drone connected")
-        break
+    try:
+        await drone.connect(system_address="udp://:14540")
+    except Exception as e:
+        print(f"❌ Error connecting to drone: {e}")
+        return
+    print("✅ Drone connected")
     await asyncio.sleep(0.5)
     return drone
 
