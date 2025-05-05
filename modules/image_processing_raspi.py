@@ -5,6 +5,8 @@ import numpy as np  # type:ignore
 from picamera2 import Picamera2, Preview
 from picamera2.controls import Controls 
 import datetime  # type:ignore
+import mavsdk
+import asyncio
 
 
 def set_colorProfiles(n):
@@ -489,3 +491,85 @@ def module_main_mission_1_v2_processing(sqeuence, colorProfile, min_area):
             # Save the processed image
             cv2.imwrite(output_dir + '/processed_' + image_filename, frame)
             print("Captured frame...")
+
+async def get_position(drone):
+    async for position in drone.telemetry.position():
+        return(position)
+    
+
+async def get_heading(drone):
+    async for heading in drone.telemetry.heading():
+        return(f"Heading: {heading}")
+    
+async def get_altitude(drone):
+    async for altitude in drone.telemetry.altitude():
+        return(f"Altitude: {altitude}")
+
+async def get_roll(drone):
+    async for euler in drone.telemetry.attitude_euler():
+        return(f"Roll: {euler.roll_deg:.2f}°")
+
+async def get_pitch(drone):
+    async for euler in drone.telemetry.attitude_euler():
+        return(f"Pitch: {euler.pitch_deg:.2f}°")
+
+async def get_yaw(drone):
+    async for euler in drone.telemetry.attitude_euler():
+        return(f"Yaw: {euler.yaw_deg:.2f}°")
+    
+
+
+def module_main_mission_1_flighttest(
+        drone, vid,
+):
+   
+
+    # Initialize image saving variables
+    new_dir = True
+    last_time_saved = time.time()
+    save_delay = 1  # Save image every 1 seconds
+    sequence = 0
+
+    while True:
+        # Capture frame and convert to HSV
+        success, _, frame = capture_and_convert(vid)
+        if not success:
+            break
+        
+        # Telemetry data that will come from the flight controller
+        altitude = get_altitude(drone)
+        heading = get_heading(drone)
+        lat_position = lat_position
+        long_position = long_position
+        pitch = get_pitch(pitch)
+        roll = get_roll(roll)
+
+        # Display the original frame and the grayscale frame
+        cv2.imshow('Original Frame', frame)
+
+        
+        # Check if new directory has to be created
+        if new_dir == True:
+            output_dir = create_directory(sequence)
+            new_dir = False
+            image_count = 0  # Reset numbering for images in new directory
+            sequence += 1
+
+            # Only save image every 1 seconds in the directory with
+            # neccesary telemetry data
+        if time.time() - last_time_saved >= save_delay:
+            image_filename = save_image(
+                frame, image_count, output_dir, sequence)
+            last_time_saved = time.time()
+            image_count += 1
+            with open(f"{output_dir}/image_saved.csv", "a") as log_file:
+                log_file.write(
+                    f"{output_dir}, {image_filename}, {pitch}, {roll}, {altitude}, {heading}, {lat_position}, {long_position}\n")
+            print("Captured frame...")
+
+
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            break
+    vid.release()
+    cv2.destroyAllWindows()
+    return sequence
