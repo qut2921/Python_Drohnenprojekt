@@ -50,7 +50,7 @@ def start_videoCapture():
     # Initialize tuning file
     tuning = Picamera2.load_tuning_file("imx708.json")
 
-    # Start video capture
+    # Start video capture and tune
     vid = Picamera2(tuning=tuning)
     config = vid.create_preview_configuration(
         main={"size": (frame_width, frame_height)})
@@ -64,7 +64,6 @@ def capture_and_convert(vid):
     """Read a frame from the video capture and convert it to HSV color space."""
 
     # Capture frame
-
     frame = vid.capture_array()
     # Convert frame to HSV color space
     hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
@@ -344,19 +343,15 @@ def module_main_mission_1(
 
     while True:
 
-      
         velocity = test_velocity()
         # Capture frame and convert to HSV
         hsv, frame = capture_and_convert(vid)
-        
 
         mask, hsv, frame = locate_object(
             colorProfile, hsv, frame, min_area,
             detectedObject, pitch, roll, altitude, heading,
             lat_position, long_position
         )
-        
-    
 
         # Display the original frame and the grayscale frame
         cv2.putText(frame, f"Berechnung Distanz", (30, 30),
@@ -385,7 +380,7 @@ def module_main_mission_1(
 
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
-    vid.release()
+
     cv2.destroyAllWindows()
 
 
@@ -409,9 +404,8 @@ def module_main_mission_1_v2(
 
     while True:
         # Capture frame and convert to HSV
-        success, _, frame = capture_and_convert(vid)
-        if not success:
-            break
+        _, frame = capture_and_convert(vid)
+       
 
         # Telemetry data that will come from the flight controller
         velocity = test_velocity()
@@ -450,7 +444,6 @@ def module_main_mission_1_v2(
 
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
-    vid.release()
     cv2.destroyAllWindows()
     return sequence
 
@@ -461,7 +454,7 @@ def module_main_mission_1_v2_processing(sqeuence, colorProfile, min_area):
     second CSV files with the GPS object coordinates is created."""
     # Read the CSV file with telemetry data
     for i in range(sqeuence):
-        with open(f"BildsequenzTest_{i}/image_saved.csv", "r") as log_file:
+        with open(f"/media/aviator/INTENSO/BildsequenzTest_{i}/image_saved.csv", "r") as log_file:
             lines = log_file.readlines()
 
         # Process each line in the CSV file
@@ -496,31 +489,31 @@ async def get_position(drone):
 
 async def get_heading(drone):
     async for heading in drone.telemetry.heading():
-        return (f"Heading: {heading}")
+        return heading
 
 
 async def get_altitude(drone):
     async for altitude in drone.telemetry.altitude():
-        return (f"Altitude: {altitude}")
+        return altitude
 
 
 async def get_roll(drone):
     async for euler in drone.telemetry.attitude_euler():
-        return (f"Roll: {euler.roll_deg:.2f}°")
+        return euler.roll_deg
 
 
 async def get_pitch(drone):
     async for euler in drone.telemetry.attitude_euler():
-        return (f"Pitch: {euler.pitch_deg:.2f}°")
+        return euler.pitch_deg
 
 
 async def get_yaw(drone):
     async for euler in drone.telemetry.attitude_euler():
-        return (f"Yaw: {euler.yaw_deg:.2f}°")
+        return euler.yaw_deg
 
 
 def module_main_mission_1_flighttest(
-        drone, vid,
+        drone, vid
 ):
 
     # Initialize image saving variables
@@ -531,17 +524,20 @@ def module_main_mission_1_flighttest(
 
     while True:
         # Capture frame and convert to HSV
-        success, _, frame = capture_and_convert(vid)
-        if not success:
-            break
+        _, frame = capture_and_convert(vid)
+        
 
         # Telemetry data that will come from the flight controller
         altitude = get_altitude(drone)
+        print(altitude)
         heading = get_heading(drone)
-        lat_position = lat_position
-        long_position = long_position
-        pitch = get_pitch(pitch)
-        roll = get_roll(roll)
+        print(heading)
+        lat_position = 40.123123
+        long_position = 150.123521
+        pitch = get_pitch(drone)
+        print(pitch)
+        roll = get_roll(drone)
+        print(roll)
 
         # Display the original frame and the grayscale frame
         cv2.imshow('Original Frame', frame)
@@ -567,6 +563,5 @@ def module_main_mission_1_flighttest(
 
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
-    vid.release()
     cv2.destroyAllWindows()
     return sequence
