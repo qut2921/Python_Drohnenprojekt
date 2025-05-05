@@ -11,7 +11,7 @@ color_profile = 1  # 0: blue, 1: red, 2: yellow, 3: red2
 min_area = 900  # minimum area for contour detection
 
 vid = image_processing.start_videoCapture()
-frame = image_processing.module_main_mission_1(
+image_processing.module_main_mission_1(
     vid, color_profile, min_area, pitch, 
     roll, altitude, heading, speed, lat_position, long_position
     )

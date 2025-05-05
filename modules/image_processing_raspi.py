@@ -3,7 +3,7 @@ import time  # type:ignore
 import cv2  # type:ignore
 import numpy as np  # type:ignore
 from picamera2 import Picamera2, Preview
-from picamera2.controls import Controls 
+from picamera2.controls import Controls
 import datetime  # type:ignore
 import mavsdk
 import asyncio
@@ -53,12 +53,9 @@ def start_videoCapture():
     # Start video capture
     vid = Picamera2(tuning=tuning)
     config = vid.create_preview_configuration(
-        main={"size":(frame_width, frame_height)})
+        main={"size": (frame_width, frame_height)})
     vid.configure(config)
-    vid.start_preview(Preview.QT)
     vid.start()
-
-   
 
     return vid
 
@@ -67,14 +64,11 @@ def capture_and_convert(vid):
     """Read a frame from the video capture and convert it to HSV color space."""
 
     # Capture frame
-    success, frame = vid.capture_array()
 
+    frame = vid.capture_array()
     # Convert frame to HSV color space
     hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
-    if not success:
-        return None, None, None
-    else:
-        return success, hsv, frame
+    return hsv, frame
 
 
 def read_image_and_convert(output_dir, image_name):
@@ -223,7 +217,7 @@ def locate_object(
                 x_distance, y_distance, _, _ = calculate_gps(
                     x, y, w, h,
                     pitch, roll, altitude, heading,
-                    lat_position, long_position,frame
+                    lat_position, long_position, frame
                 )
 
                 # draw rectangle and text
@@ -240,7 +234,7 @@ def locate_object(
             else:
                 # Reset flag if area is too small
                 detectedObject = False
-    return mask, hsv, frame,
+    return mask, hsv, frame
 
 
 def locate_object_and_save(
@@ -338,6 +332,7 @@ def module_main_mission_1(
     image after specified time intervals.
     The telemetry data is not saved in this version."""
     # Initialize object detection variables
+    cv2.startWindowThread()
     detectedObject = False
     speed = speed
 
@@ -349,18 +344,19 @@ def module_main_mission_1(
 
     while True:
 
+      
         velocity = test_velocity()
-
         # Capture frame and convert to HSV
-        success, hsv, frame = capture_and_convert(vid)
-        if not success:
-            break
+        hsv, frame = capture_and_convert(vid)
+        
 
         mask, hsv, frame = locate_object(
             colorProfile, hsv, frame, min_area,
             detectedObject, pitch, roll, altitude, heading,
             lat_position, long_position
         )
+        
+    
 
         # Display the original frame and the grayscale frame
         cv2.putText(frame, f"Berechnung Distanz", (30, 30),
@@ -416,7 +412,7 @@ def module_main_mission_1_v2(
         success, _, frame = capture_and_convert(vid)
         if not success:
             break
-        
+
         # Telemetry data that will come from the flight controller
         velocity = test_velocity()
         altitude = altitude
@@ -472,57 +468,60 @@ def module_main_mission_1_v2_processing(sqeuence, colorProfile, min_area):
         for line in lines:
             # Split the line at ", "" to extract data
             output_dir, image_filename, pitch, roll, altitude, heading, lat_position, long_position = line.strip().split(", ")
-            
+
             # Convert into integers
             pitch, roll, altitude, heading, lat_position, long_position = int(pitch), int(
                 roll), int(altitude), int(heading), float(lat_position), float(long_position)
-            
+
             # Read the image and convert it to HSV color space
             hsv, frame = read_image_and_convert(output_dir, image_filename)
             detectedObject = False
-            
+
             # Locate the object and save locations in CSV file
             _, _, frame = locate_object_and_save(
                 output_dir, image_filename, colorProfile, hsv, frame,
                 min_area, detectedObject, pitch, roll, altitude,
                 heading, lat_position, long_position
             )
-            
+
             # Save the processed image
             cv2.imwrite(output_dir + '/processed_' + image_filename, frame)
             print("Captured frame...")
 
+
 async def get_position(drone):
     async for position in drone.telemetry.position():
-        return(position)
-    
+        return (position)
+
 
 async def get_heading(drone):
     async for heading in drone.telemetry.heading():
-        return(f"Heading: {heading}")
-    
+        return (f"Heading: {heading}")
+
+
 async def get_altitude(drone):
     async for altitude in drone.telemetry.altitude():
-        return(f"Altitude: {altitude}")
+        return (f"Altitude: {altitude}")
+
 
 async def get_roll(drone):
     async for euler in drone.telemetry.attitude_euler():
-        return(f"Roll: {euler.roll_deg:.2f}°")
+        return (f"Roll: {euler.roll_deg:.2f}°")
+
 
 async def get_pitch(drone):
     async for euler in drone.telemetry.attitude_euler():
-        return(f"Pitch: {euler.pitch_deg:.2f}°")
+        return (f"Pitch: {euler.pitch_deg:.2f}°")
+
 
 async def get_yaw(drone):
     async for euler in drone.telemetry.attitude_euler():
-        return(f"Yaw: {euler.yaw_deg:.2f}°")
-    
+        return (f"Yaw: {euler.yaw_deg:.2f}°")
 
 
 def module_main_mission_1_flighttest(
         drone, vid,
 ):
-   
 
     # Initialize image saving variables
     new_dir = True
@@ -535,7 +534,7 @@ def module_main_mission_1_flighttest(
         success, _, frame = capture_and_convert(vid)
         if not success:
             break
-        
+
         # Telemetry data that will come from the flight controller
         altitude = get_altitude(drone)
         heading = get_heading(drone)
@@ -547,7 +546,6 @@ def module_main_mission_1_flighttest(
         # Display the original frame and the grayscale frame
         cv2.imshow('Original Frame', frame)
 
-        
         # Check if new directory has to be created
         if new_dir == True:
             output_dir = create_directory(sequence)
@@ -566,7 +564,6 @@ def module_main_mission_1_flighttest(
                 log_file.write(
                     f"{output_dir}, {image_filename}, {pitch}, {roll}, {altitude}, {heading}, {lat_position}, {long_position}\n")
             print("Captured frame...")
-
 
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
