@@ -2,7 +2,7 @@ import modules.image_processing_raspi as image_processing  # type: ignore
 
 pitch = 0  # [degrees] dummy variable
 roll = 0  # [degrees] dummy variable
-altitude = 0  # [m] dummy variable
+altitude = 10  # [m] dummy variable
 heading = 0  # [degrees] dummy variable
 speed = 0  # dummy variable
 lat_position = 0
