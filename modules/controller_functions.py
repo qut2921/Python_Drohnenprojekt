@@ -18,7 +18,10 @@ async def connect_drone() -> System:
     print("----------------------")
     print("🔄 Connecting to drone...")
     try:
+        # Connect to the drone to SITL
         await drone.connect(system_address="udp://:14540")
+        # Connect to the drone to real hardware
+        #await drone.connect(system_address="serial:///dev/ttyAMA0:57600")
     except Exception as e:
         print(f"❌ Error connecting to drone: {e}")
         return
@@ -184,7 +187,7 @@ async def goto_location(drone: System, target_latitude: float,
     home_abs_alt = home.absolute_altitude_m
     # Transforms the target altitude to absolute altitude + target altitude
     target_absolute_alt = home_abs_alt + target_altitude
-    #
+    # Flys to the target location
     await drone.action.goto_location(target_latitude,
                                      target_longitude,
                                      target_absolute_alt,
@@ -204,8 +207,8 @@ async def goto_location(drone: System, target_latitude: float,
         )
 
         # Checks if the drone reached target
-        if (abs(current_latitude - target_latitude) < 0.00001 and
-                abs(current_longitude - target_longitude) < 0.00001 and
+        if (abs(current_latitude - target_latitude) < 0.000005 and
+                abs(current_longitude - target_longitude) < 0.00005 and
                 abs(current_height - target_altitude) < 0.1):
             print("\n✅ Target location reached")
             break

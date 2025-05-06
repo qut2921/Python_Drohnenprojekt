@@ -1,9 +1,7 @@
-import modules.controller_functions as cl # type: ignore
+import modules.controller_functions as cl  # type: ignore
 from mavsdk.mission import MissionItem, MissionPlan
 from mavsdk.mission import Mission
 import asyncio
-
-
 
 
 # Mission 1 (eibene Funktion)
@@ -13,19 +11,20 @@ async def mission_1():
         1. Connect to the drone
         2. User confirmation before arming
         3. Arm the drone and set locations
-        4. Take off to 5 meters
-        5. Fly to each location
-        6. Wait for 5 seconds at each location
-        7. Land and disarm
+        4. User confirmation before takeoff
+        5. Take off to 5 meters
+        6. Fly to each location
+        7. Wait for 5 seconds at each location
+        8. Land and disarm
     """
     # 1. Connect to the drone
     drone = await cl.connect_drone()
 
     # 2. User confirmation before arming
     while True:
-        user_input = input("🚦 Ready to arm and start mission? (y/n): ").strip().lower()
+        user_input = input(
+            "🚦 Ready to arm the drone? (y/n): ").strip().lower()
         if user_input == "y":
-            print("✅ Starting mission...")
             break
         elif user_input == "n":
             print("❌ Mission aborted by user.")
@@ -43,7 +42,7 @@ async def mission_1():
     home_lat = home_location.latitude_deg
     home_lon = home_location.longitude_deg
     mission_locations = [
-        #(home_lat, home_lon),  # Start at home
+        # (home_lat, home_lon),  # Start at home
         (48.7675058, 11.3364601),
         (48.7672850, 11.3361733),
         (48.7674827, 11.3358296),
@@ -51,32 +50,44 @@ async def mission_1():
         (home_lat, home_lon),  # Return to home
     ]
 
-    # 4. Take off to 5 meters
+    # 4. User confirmation before takeoff
+    while True:
+        user_input = input(
+            "🚦 Ready to takeoff? (y/n): ").strip().lower()
+        if user_input == "y":
+            break
+        elif user_input == "n":
+            print("❌ Mission aborted by user.")
+            exit(0)
+        else:
+            print("⚠️ Please enter 'y' to start or 'n' to abort.")
+
+    # 5. Take off to 5 meters
     target_altitude = 5.0
     await cl.default_takeoff(drone, target_altitude)
     await asyncio.sleep(5)
 
     """
-    # 4. Start photo captur
+    # 6. Start photo capture
     print("Starting photo capture...")
     await module_main_mission_1(....)
     print("Photo capture started.")
     """
-    # 6. Fly to each location
+    # 7. Fly to each location
     target_altitude = 10.0
     for i, (latitude, longitude) in enumerate(mission_locations, start=1):
         print(
             f"\n🟣 Flying to location {i}/{len(mission_locations)}: "
             f"{latitude}, {longitude}, {target_altitude} m"
         )
-        await cl.goto_location(drone, 
-                                                 latitude, 
-                                                 longitude, 
-                                                 target_altitude)
+        await cl.goto_location(drone,
+                               latitude,
+                               longitude,
+                               target_altitude)
         # Wait for 5 seconds at each location to take a photo
         await asyncio.sleep(5)
 
-    # 7. Land and disarm (last gps location must be the finsh)
+    # 8. Land and disarm (last gps location must be the finsh)
     await cl.default_land_and_disarm(drone)
 
 
