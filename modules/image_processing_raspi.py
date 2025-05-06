@@ -305,14 +305,9 @@ def save_image(
     """Save the captured image to the specified directory."""
     # Capture frame
     image_filename = 'frame_{}_{}.jpg'.format(sequence-1, frame_amount)
-    cv2.imwrite(
-        output_dir + '/' + image_filename, frame)
+    cv2.imwrite(output_dir + '/' + image_filename, frame)
     print("Captured frame...")
     return image_filename
-
-
-def save_data():
-    abc = 0
 
 
 def test_velocity():
@@ -405,10 +400,9 @@ def module_main_mission_1_v2(
     while True:
         # Capture frame and convert to HSV
         _, frame = capture_and_convert(vid)
-       
 
         # Telemetry data that will come from the flight controller
-        velocity = test_velocity()
+        velocity = 10
         altitude = altitude
         heading = heading
         lat_position = lat_position
@@ -436,7 +430,7 @@ def module_main_mission_1_v2(
                 image_count += 1
                 with open(f"{output_dir}/image_saved.csv", "a") as log_file:
                     log_file.write(
-                        f"{output_dir}, {image_filename}, {pitch}, {roll}, {altitude}, {heading}, {lat_position}, {long_position}\n")
+                        f"{output_dir},  {image_filename}, {pitch}, {roll}, {altitude}, {heading}, {lat_position}, {long_position}\n")
                 print("Captured frame...")
 
         else:
@@ -525,7 +519,6 @@ def module_main_mission_1_flighttest(
     while True:
         # Capture frame and convert to HSV
         _, frame = capture_and_convert(vid)
-        
 
         # Telemetry data that will come from the flight controller
         altitude = get_altitude(drone)

@@ -2,13 +2,13 @@ import modules.image_processing_raspi as image_processing  # type: ignore
 
 pitch = 0  # [degrees] dummy variable
 roll = 0  # [degrees] dummy variable
-altitude = 10  # [m] dummy variable
-heading = 125  # [degrees] dummy variable
+altitude = 0  # [m] dummy variable
+heading = 0  # [degrees] dummy variable
 speed = 0  # dummy variable
-lat_position = 47.0134
-long_position = 10.134  # dummy variable
+lat_position = 0
+long_position = 0  # dummy variable
 color_profile = 0  # 0: blue, 1: red, 2: yellow, 3: red2
-min_area = 900  # minimum area for contour detection
+min_area = 700  # minimum area for contour detection
 
 
 vid = image_processing.start_videoCapture()
