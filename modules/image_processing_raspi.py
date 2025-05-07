@@ -53,7 +53,7 @@ def start_videoCapture():
     # Start video capture and tune
     vid = Picamera2(tuning=tuning)
     config = vid.create_preview_configuration(
-        main={"size": (frame_width, frame_height)})
+        main={"size": (frame_width, frame_height), "format": "RGB888"})
     vid.configure(config)
     vid.start()
 
@@ -402,7 +402,7 @@ def module_main_mission_1_v2(
         _, frame = capture_and_convert(vid)
 
         # Telemetry data that will come from the flight controller
-        velocity = 10
+        velocity = 2
         altitude = altitude
         heading = heading
         lat_position = lat_position
