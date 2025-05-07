@@ -73,6 +73,7 @@ async def mission_1():
     await module_main_mission_1(....)
     print("Photo capture started.")
     """
+    
     # 7. Fly to each location
     target_altitude = 10.0
     for i, (latitude, longitude) in enumerate(mission_locations, start=1):
