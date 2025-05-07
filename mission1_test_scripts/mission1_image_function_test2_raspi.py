@@ -12,6 +12,6 @@ min_area = 700  # minimum area for contour detection
 
 
 vid = image_processing.start_videoCapture()
-sequence = image_processing.module_main_mission_1_v2(
+sequence = image_processing.mtest_main_mission_1(
     vid, pitch, roll, altitude, heading, speed, lat_position, long_position)
-image_processing.module_main_mission_1_v2_processing(sequence, color_profile, min_area)
+image_processing.main_mission_1_post_processing(sequence, color_profile, min_area)

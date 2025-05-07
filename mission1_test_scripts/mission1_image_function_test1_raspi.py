@@ -9,7 +9,7 @@ min_area = 900  # minimum area for contour detection
 async def main():
     drone = await cl.connect_drone()
     vid = ip.start_videoCapture()
-    sequence = await ip.module_main_mission_1_flighttest(drone, vid)
-    await ip.module_main_mission_1_v2_processing(sequence, color_profile, min_area)
+    sequence = await ip.main_mission_1(drone, vid)
+    await ip.main_mission_1_post_processing(sequence, color_profile, min_area)
 
 asyncio.run(main())
