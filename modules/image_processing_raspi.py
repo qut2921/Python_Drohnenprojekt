@@ -430,7 +430,7 @@ def module_main_mission_1_v2(
                 image_count += 1
                 with open(f"{output_dir}/image_saved.csv", "a") as log_file:
                     log_file.write(
-                        f"{output_dir},  {image_filename}, {pitch}, {roll}, {altitude}, {heading}, {lat_position}, {long_position}\n")
+                        f"{output_dir}, {image_filename}, {pitch}, {roll}, {altitude}, {heading}, {lat_position}, {long_position}\n")
                 print("Captured frame...")
 
         else:
@@ -506,7 +506,7 @@ async def get_yaw(drone):
         return euler.yaw_deg
 
 
-def module_main_mission_1_flighttest(
+async def module_main_mission_1_flighttest(
         drone, vid
 ):
 
@@ -521,15 +521,14 @@ def module_main_mission_1_flighttest(
         _, frame = capture_and_convert(vid)
 
         # Telemetry data that will come from the flight controller
-        altitude = get_altitude(drone)
+        altitude = await get_altitude(drone)
         print(altitude)
-        heading = get_heading(drone)
+        heading = await get_heading(drone)
         print(heading)
-        lat_position = 40.123123
-        long_position = 150.123521
-        pitch = get_pitch(drone)
+        (lat_position, long_position, height) = await get_position(drone)
+        pitch = await get_pitch(drone)
         print(pitch)
-        roll = get_roll(drone)
+        roll = await get_roll(drone)
         print(roll)
 
         # Display the original frame and the grayscale frame
