@@ -1,3 +1,10 @@
+"""
+This module contains functions for image processing using OpenCV and the 
+Picamera2 library.
+It includes functions for capturing images, converting color spaces,
+locating objects based on color profiles, and saving images with telemetry data.
+Depending on the mission different functions are used to process the images."""
+
 import os
 import time  # type:ignore
 import cv2  # type:ignore
@@ -5,14 +12,14 @@ import numpy as np  # type:ignore
 from picamera2 import Picamera2, Preview
 from picamera2.controls import Controls
 import datetime  # type:ignore
-import mavsdk
 import asyncio
+import modules.communicator as communicator
 
 
 def set_colorProfiles(n):
     """Set color profiles for object detection.
-
-      n: 0: blue, 1: red, 2: yellow, 3: red2
+    
+    n: 0: blue, 1: red, 2: yellow, 3: red2
     """
 
     if n == 0:
@@ -44,8 +51,8 @@ def start_videoCapture():
     """Set frame properties and start video capture."""
 
     # Set frame dimensions
-    frame_width = 1280  # Maximum is 4608
-    frame_height = 720  # Maximum 2592
+    frame_width = 1920  # Maximum is 4608
+    frame_height = 1080  # Maximum 2592
 
     # Initialize tuning file
     tuning = Picamera2.load_tuning_file("imx708.json")
@@ -61,7 +68,12 @@ def start_videoCapture():
 
 
 def capture_and_convert(vid):
-    """Read a frame from the video capture and convert it to HSV color space."""
+    """
+    Read a frame from the video capture and convert it to HSV color space.
+    This function is used for live detection of the objects. Especially in 
+    mission 2 and 3 it is useful, where the position of the object is used to 
+    generate control inputs
+    """
 
     # Capture frame
     frame = vid.capture_array()
@@ -71,7 +83,10 @@ def capture_and_convert(vid):
 
 
 def read_image_and_convert(output_dir, image_name):
-    """Read a frame from the video capture and convert it to HSV color space."""
+    """
+    Read a frame from the video capture and convert it to HSV color space.
+    This function is used for post-processing of the images that have been shot
+    and saved along with the telemetry data. This function is used in mission1"""
 
     # Capture frame
     frame = cv2.imread(output_dir + '/' + image_name)
@@ -144,6 +159,7 @@ def calculate_gps(
 
 def remove_noise(mask):
     """Remove noise from the mask using morphological operations."""
+    
     kernel = np.ones((5, 5), np.uint8)
     mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel)  # Remove small dots
     mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)  # Fill small holes
@@ -153,9 +169,11 @@ def remove_noise(mask):
 def draw_rectangle_with_text(
         frame, name, x, y, w, h,
         x_distance, y_distance):
-    """Draw a rectangle around the detected object and add text with its coordinates.
-
-    If the text goes out of bounds, adjust its position and color."""
+    """
+    Draw a rectangle around the detected object and add text with its coordinates.
+    If the text goes out of bounds, adjust its position and color.
+    """
+    
     # Set text properties
     font = cv2.FONT_HERSHEY_SIMPLEX
     scale = 0.6
@@ -192,7 +210,12 @@ def draw_rectangle_with_text(
 def locate_object(
         colorProfile, hsv, frame, min_area, detectedObject,
         pitch, roll, altitude, heading, lat_position, long_position):
-    """Locate the object in the frame based on the specified color profile."""
+    """
+    Locate the object in the frame based on the specified color profile.
+    This function is used for live detection of the objects which is done
+    in mission 2 and 3.
+    """
+    
     # mask for the specified color profile
     name, hsv_lower, hsv_upper = set_colorProfiles(colorProfile)
     mask = cv2.inRange(hsv, hsv_lower, hsv_upper)
@@ -240,7 +263,11 @@ def locate_object_and_save(
         output_dir, image_filename, colorProfile, hsv,
         frame, min_area, detectedObject,
         pitch, roll, altitude, heading, lat_position, long_position):
-    """Locate the object in the frame based on the specified color profile."""
+    """
+    Locate the object in the frame based on the specified color profile.
+    This function is used for post-processing of the images that have been shot
+    and saved along with the telemetry data. This function is used in mission1.
+    """
     # mask for the specified color profile
     name, hsv_lower, hsv_upper = set_colorProfiles(colorProfile)
     mask = cv2.inRange(hsv, hsv_lower, hsv_upper)
@@ -293,7 +320,9 @@ def create_directory(sequence):
 
     sequence: specifies the sequence of image savings based on the mission plan
     """
+    
     output_dir = "/media/aviator/INTENSO/BildsequenzTest_{}".format(sequence)
+    
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
         print("Creating directory" + output_dir + "...")
@@ -303,6 +332,7 @@ def create_directory(sequence):
 def save_image(
         frame, frame_amount, output_dir, sequence):
     """Save the captured image to the specified directory."""
+    
     # Capture frame
     image_filename = 'frame_{}_{}.jpg'.format(sequence-1, frame_amount)
     cv2.imwrite(output_dir + '/' + image_filename, frame)
@@ -311,20 +341,27 @@ def save_image(
 
 
 def test_velocity():
-    """Test function to simulate velocity."""
+    """
+    Test function to simulate velocity. This function was used to test the 
+    functionality of the main modules. It is used to simulate varying velocities.
+    A sine function is used to simulate the velocity.
+    """
     velocity = 6*np.abs(np.sin(time.time()/4)) + 2  # [m/s]
     print(f"Velocity: {velocity:.2f} m/s")
     return velocity
 
 
-def module_main_mission_1(
+def test_main_mission_2(
         vid, colorProfile, min_area,
         pitch, roll, altitude, heading, speed, lat_position, long_position
 ):
-    """This is a concept for the image processing in Mission 1.
+    """
+    This is a concept for the image processing in Mission 1.
     The function continously locates the object in the frame and saves the 
     image after specified time intervals.
-    The telemetry data is not saved in this version."""
+    The telemetry data is not saved in this version. This function is used to
+    test the functionality of the image processing module for mission 2 and 3
+    """
     # Initialize object detection variables
     cv2.startWindowThread()
     detectedObject = False
@@ -379,15 +416,18 @@ def module_main_mission_1(
     cv2.destroyAllWindows()
 
 
-def module_main_mission_1_v2(
+def test_main_mission_1(
         vid, pitch, roll, altitude,
         heading, speed, lat_position, long_position
 ):
-    """This is the second concept for the image processing in Mission 1.
+    """
+    This is the concept for the image processing in Mission 1.
     The function just saves the image after specified time intervals and
     will not locate the object right away. The telemetry data is saved as
     timestamp for each image in order to calculate the distance later
-    into a CSV files."""
+    into a CSV files. This function is used to test the functionality of the main
+    function for mission 1.
+    """
     # Initialize object detection variables
     speed = speed
 
@@ -442,10 +482,13 @@ def module_main_mission_1_v2(
     return sequence
 
 
-def module_main_mission_1_v2_processing(sqeuence, colorProfile, min_area):
-    """After acquiring the images, this function processes and locates
+def main_mission_1_post_processing(sqeuence, colorProfile, min_area):
+    """
+    After acquiring the images, this function processes and locates
     the object by reading the CSV files. In case an object is located, a 
-    second CSV files with the GPS object coordinates is created."""
+    second CSV files with the GPS object coordinates is created.
+    """
+    
     # Read the CSV file with telemetry data
     for i in range(sqeuence):
         with open(f"/media/aviator/INTENSO/BildsequenzTest_{i}/image_saved.csv", "r") as log_file:
@@ -456,9 +499,8 @@ def module_main_mission_1_v2_processing(sqeuence, colorProfile, min_area):
             # Split the line at ", "" to extract data
             output_dir, image_filename, pitch, roll, altitude, heading, lat_position, long_position = line.strip().split(", ")
 
-            # Convert into integers
-            pitch, roll, altitude, heading, lat_position, long_position = int(pitch), int(
-                roll), int(altitude), int(heading), float(lat_position), float(long_position)
+            # Convert into float values
+            pitch, roll, altitude, heading, lat_position, long_position = float(pitch), float(roll), float(altitude), float(heading), float(lat_position), float(long_position)
 
             # Read the image and convert it to HSV color space
             hsv, frame = read_image_and_convert(output_dir, image_filename)
@@ -476,39 +518,14 @@ def module_main_mission_1_v2_processing(sqeuence, colorProfile, min_area):
             print("Captured frame...")
 
 
-async def get_position(drone):
-    async for position in drone.telemetry.position():
-        return (position)
-
-
-async def get_heading(drone):
-    async for heading in drone.telemetry.heading():
-        return heading
-
-
-async def get_altitude(drone):
-    async for altitude in drone.telemetry.altitude():
-        return altitude
-
-
-async def get_roll(drone):
-    async for euler in drone.telemetry.attitude_euler():
-        return euler.roll_deg
-
-
-async def get_pitch(drone):
-    async for euler in drone.telemetry.attitude_euler():
-        return euler.pitch_deg
-
-
-async def get_yaw(drone):
-    async for euler in drone.telemetry.attitude_euler():
-        return euler.yaw_deg
-
-
-async def module_main_mission_1_flighttest(
-        drone, vid
-):
+async def main_mission_1(drone, vid):
+    """
+    This is the concept for the image processing in Mission 1.
+    The function just saves the image after specified time intervals and
+    will not locate the object right away. The telemetry data is saved as
+    timestamp for each image in order to calculate the distance later
+    into a CSV files. 
+    """
 
     # Initialize image saving variables
     new_dir = True
@@ -521,37 +538,47 @@ async def module_main_mission_1_flighttest(
         _, frame = capture_and_convert(vid)
 
         # Telemetry data that will come from the flight controller
-        altitude = await get_altitude(drone)
+        altitude_data = await communicator.get_altitude(drone)
+        altitude = altitude_data.bottom_clearance_m
         print(altitude)
-        heading = await get_heading(drone)
+        heading = await communicator.get_heading(drone)
         print(heading)
-        (lat_position, long_position, height) = await get_position(drone)
-        pitch = await get_pitch(drone)
+        (lat_position, long_position, ) = await communicator.get_position(drone)
+        pitch = await communicator.get_pitch(drone)
         print(pitch)
-        roll = await get_roll(drone)
+        roll = await communicator.get_roll(drone)
         print(roll)
+        velocity = await communicator.get_velocity(drone)
+        print(velocity)
 
         # Display the original frame and the grayscale frame
         cv2.imshow('Original Frame', frame)
 
         # Check if new directory has to be created
-        if new_dir == True:
-            output_dir = create_directory(sequence)
-            new_dir = False
-            image_count = 0  # Reset numbering for images in new directory
-            sequence += 1
-
+        if velocity < 5:
+            
+            if new_dir == True:
+                output_dir = create_directory(sequence)
+                new_dir = False
+                image_count = 0  # Reset numbering for images in new directory
+                sequence += 1
+                
             # Only save image every 1 seconds in the directory with
             # neccesary telemetry data
-        if time.time() - last_time_saved >= save_delay:
-            image_filename = save_image(
-                frame, image_count, output_dir, sequence)
-            last_time_saved = time.time()
-            image_count += 1
-            with open(f"{output_dir}/image_saved.csv", "a") as log_file:
-                log_file.write(
-                    f"{output_dir}, {image_filename}, {pitch}, {roll}, {altitude}, {heading}, {lat_position}, {long_position}\n")
-            print("Captured frame...")
+            if time.time() - last_time_saved >= save_delay:
+                image_filename = save_image(
+                    frame, image_count, output_dir, sequence)
+                
+                last_time_saved = time.time()
+                image_count += 1
+                
+                with open(f"{output_dir}/image_saved.csv", "a") as log_file:
+                    log_file.write(
+                        f"{output_dir}, {image_filename}, {pitch}, {roll}, {altitude}, {heading}, {lat_position}, {long_position}\n")
+                print("Captured frame...")
+            
+            else:
+                new_dir = True
 
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
