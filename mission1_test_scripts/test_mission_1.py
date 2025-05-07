@@ -35,7 +35,7 @@ async def mission_1():
     # 3. Arm and Mission locations
     # Arm the drone
     await cl.arm_drone(drone)
-    await asyncio.sleep(2)
+    await asyncio.sleep(1)
 
     # Get the home location
     home_location = await drone.telemetry.home().__anext__()
@@ -49,20 +49,6 @@ async def mission_1():
         (48.76786, 11.33649),
         (home_lat, home_lon),  # Return to home
     ]
-
-
- # 4. User confirmation before arming
-    while True:
-        user_input = input("ðŸš¦ Ready to arm and start mission? (y/n): ").strip().lower()
-        if user_input == "y":
-            break
-        elif user_input == "n":
-            print("âŒ Mission aborted by user.")
-            exit(0)
-        else:
-            print("âš ï¸ Please enter 'y' to start or 'n' to abort.")
-
-
 
     # 4. User confirmation before takeoff
     while True:
@@ -79,7 +65,7 @@ async def mission_1():
     # 5. Take off to 5 meters
     target_altitude = 5.0
     await cl.default_takeoff(drone, target_altitude)
-    await asyncio.sleep(5)
+    await asyncio.sleep(1)
 
     """
     # 6. Start photo capture
@@ -103,67 +89,6 @@ async def mission_1():
         await drone.action.hold()
         
     # 8. Land and disarm (last gps location must be the finsh)
-    await cl.default_land_and_disarm(drone)
-
-
-# Mission 1 (MissionPlaner)
-async def mission_1_planner():
-    # 1. Connect to the drone
-    drone = await cl.connect_drone()
-
-    # 2. Create Mission Items
-    home_position = await drone.telemetry.home().__anext__()
-    home_lat = home_position.latitude_deg
-    home_lon = home_position.longitude_deg
-
-    mission_items = []
-
-    waypoints = [
-        (48.7675058, 11.3364601),
-        (48.7672850, 11.3361733),
-        (48.7674827, 11.3358296),
-        (48.7677421, 11.3361358),
-        (home_lat, home_lon),  # Return to home
-    ]
-
-    for lat, lon in waypoints:
-        mission_items.append(
-            Mission.MissionItem(
-                lat_deg=lat,
-                lon_deg=lon,
-                rel_alt=10.0,  # relative altitude 10m
-                speed_m_s=3.0,  # Fly at 3 m/s
-                fly_through=False,  # Stop at waypoint
-                gimbal_pitch_deg=0.0,
-                gimbal_yaw_deg=0.0,
-                camera_action=Mission.MissionItem.CameraAction.NONE,
-            )
-        )
-
-    mission_plan = Mission.MissionPlan(mission_items)
-
-    # 3. Upload Mission
-    await drone.mission_raw.upload_mission(mission_plan)
-    print("📋 Mission uploaded")
-
-    # 4. Arm and Start Mission
-    await drone.action.arm()
-    print("✅ Drone armed")
-
-    await drone.mission_raw.start_mission()
-    print("🚀 Mission started")
-
-    # 5. Wait until mission finished
-    async for mission_progress in drone.mission_raw.mission_progress():
-        print(f"\rMission progress: "
-              f"{mission_progress.current}/{mission_progress.total}",
-              end="")
-        if mission_progress.current == mission_progress.total:
-            print("\nMission completed")
-            break
-        await asyncio.sleep(0.5)
-
-    # 6. Land and Disarm
     await cl.default_land_and_disarm(drone)
 
 # Run mission 1
