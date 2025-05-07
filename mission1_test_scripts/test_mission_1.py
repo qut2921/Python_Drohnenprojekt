@@ -43,12 +43,26 @@ async def mission_1():
     home_lon = home_location.longitude_deg
     mission_locations = [
         # (home_lat, home_lon),  # Start at home
-        (48.7675058, 11.3364601),
-        (48.7672850, 11.3361733),
-        (48.7674827, 11.3358296),
-        (48.7677421, 11.3361358),
+        (48.76758, 11.33717),
+        (48.76786, 11.33649),
+        (48.76758, 11.33717),
+        (48.76786, 11.33649),
         (home_lat, home_lon),  # Return to home
     ]
+
+
+ # 4. User confirmation before arming
+    while True:
+        user_input = input("ðŸš¦ Ready to arm and start mission? (y/n): ").strip().lower()
+        if user_input == "y":
+            break
+        elif user_input == "n":
+            print("âŒ Mission aborted by user.")
+            exit(0)
+        else:
+            print("âš ï¸ Please enter 'y' to start or 'n' to abort.")
+
+
 
     # 4. User confirmation before takeoff
     while True:
@@ -86,7 +100,8 @@ async def mission_1():
                                target_altitude)
         # Wait for 5 seconds at each location to take a photo
         await asyncio.sleep(5)
-
+        await drone.action.hold()
+        
     # 8. Land and disarm (last gps location must be the finsh)
     await cl.default_land_and_disarm(drone)
 
