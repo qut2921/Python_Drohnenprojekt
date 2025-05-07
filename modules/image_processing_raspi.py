@@ -457,8 +457,7 @@ def module_main_mission_1_v2_processing(sqeuence, colorProfile, min_area):
             output_dir, image_filename, pitch, roll, altitude, heading, lat_position, long_position = line.strip().split(", ")
 
             # Convert into integers
-            pitch, roll, altitude, heading, lat_position, long_position = int(pitch), int(
-                roll), int(altitude), int(heading), float(lat_position), float(long_position)
+            pitch, roll, altitude, heading, lat_position, long_position = float(pitch), float(roll), float(altitude), float(heading), float(lat_position), float(long_position)
 
             # Read the image and convert it to HSV color space
             hsv, frame = read_image_and_convert(output_dir, image_filename)
@@ -521,11 +520,15 @@ async def module_main_mission_1_flighttest(
         _, frame = capture_and_convert(vid)
 
         # Telemetry data that will come from the flight controller
-        altitude = await get_altitude(drone)
+        altitude_data = await get_altitude(drone)
+        altitude = altitude_data.bottom_clearance_m
         print(altitude)
-        heading = await get_heading(drone)
-        print(heading)
-        (lat_position, long_position, height) = await get_position(drone)
+        #heading = await get_heading(drone)
+        #print(heading)
+        #(lat_position, long_position, height) = await get_position(drone)
+        lat_position = 40.013213
+        long_position = 143.112312
+        heading = 120
         pitch = await get_pitch(drone)
         print(pitch)
         roll = await get_roll(drone)
