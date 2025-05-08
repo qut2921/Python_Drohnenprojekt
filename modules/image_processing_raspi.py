@@ -18,7 +18,7 @@ import modules.communicator as communicator
 
 def set_colorProfiles(n):
     """Set color profiles for object detection.
-    
+
     n: 0: blue, 1: red, 2: yellow, 3: red2
     """
 
@@ -47,22 +47,46 @@ def set_colorProfiles(n):
         return (name, hsv_lower, hsv_upper)
 
 
-def start_videoCapture():
-    """Set frame properties and start video capture."""
+def set_sensor_properties():
+    """Set sensor properties for the camera."""
 
-    # Set frame dimensions
     frame_width = 1920  # Maximum is 4608
     frame_height = 1080  # Maximum 2592
+    
+    camera_config = {"size": (frame_width, frame_height), "format": "RGB888"}
+
+    return camera_config
+
+
+def set_camera_controls(vid):
+
+    with vid.controls as ctrl:
+        ctrl.AeEnable = True
+        ctrl.AwbEnable = False
+        ctrl.AnalogueGain = 2.0
+        ctrl.ExposureTime = 3000
+        ctrl.NoiseReductionMode = 4
+        ctrl.Sharpness = 6
+
+
+def start_videoCapture(mission_id):
+    """Set frame properties and start video capture."""
 
     # Initialize tuning file
     tuning = Picamera2.load_tuning_file("imx708.json")
 
-    # Start video capture and tune
+    # Configuration and tuning
     vid = Picamera2(tuning=tuning)
-    config = vid.create_preview_configuration(
-        main={"size": (frame_width, frame_height), "format": "RGB888"})
+    config = vid.create_preview_configuration(main=set_sensor_properties())
     vid.configure(config)
+    
+    # Only start preview when mission 1, for missions 2 and 3 OpenCV functions
+    # will be used to display the frame with the rectangles
+    if mission_id == 1:
+        vid.start_preview(Preview.QTGL)
+    # Start camera with settings
     vid.start()
+    set_camera_controls(vid)
 
     return vid
 
@@ -159,7 +183,7 @@ def calculate_gps(
 
 def remove_noise(mask):
     """Remove noise from the mask using morphological operations."""
-    
+
     kernel = np.ones((5, 5), np.uint8)
     mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel)  # Remove small dots
     mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)  # Fill small holes
@@ -173,7 +197,7 @@ def draw_rectangle_with_text(
     Draw a rectangle around the detected object and add text with its coordinates.
     If the text goes out of bounds, adjust its position and color.
     """
-    
+
     # Set text properties
     font = cv2.FONT_HERSHEY_SIMPLEX
     scale = 0.6
@@ -215,7 +239,7 @@ def locate_object(
     This function is used for live detection of the objects which is done
     in mission 2 and 3.
     """
-    
+
     # mask for the specified color profile
     name, hsv_lower, hsv_upper = set_colorProfiles(colorProfile)
     mask = cv2.inRange(hsv, hsv_lower, hsv_upper)
@@ -320,9 +344,9 @@ def create_directory(sequence):
 
     sequence: specifies the sequence of image savings based on the mission plan
     """
-    
+
     output_dir = "/media/aviator/INTENSO/BildsequenzTest_{}".format(sequence)
-    
+
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
         print("Creating directory" + output_dir + "...")
@@ -330,12 +354,14 @@ def create_directory(sequence):
 
 
 def save_image(
-        frame, frame_amount, output_dir, sequence):
+        vid, frame_amount, output_dir, sequence):
     """Save the captured image to the specified directory."""
-    
+
     # Capture frame
     image_filename = 'frame_{}_{}.jpg'.format(sequence-1, frame_amount)
-    cv2.imwrite(output_dir + '/' + image_filename, frame)
+    vid.switch_mode_and_capture_file(
+        set_sensor_properties(), output_dir + '/' + image_filename)
+    # cv2.imwrite(output_dir + '/' + image_filename, frame)
     print("Captured frame...")
     return image_filename
 
@@ -488,7 +514,7 @@ def main_mission_1_post_processing(sqeuence, colorProfile, min_area):
     the object by reading the CSV files. In case an object is located, a 
     second CSV files with the GPS object coordinates is created.
     """
-    
+
     # Read the CSV file with telemetry data
     for i in range(sqeuence):
         with open(f"/media/aviator/INTENSO/BildsequenzTest_{i}/image_saved.csv", "r") as log_file:
@@ -500,7 +526,8 @@ def main_mission_1_post_processing(sqeuence, colorProfile, min_area):
             output_dir, image_filename, pitch, roll, altitude, heading, lat_position, long_position = line.strip().split(", ")
 
             # Convert into float values
-            pitch, roll, altitude, heading, lat_position, long_position = float(pitch), float(roll), float(altitude), float(heading), float(lat_position), float(long_position)
+            pitch, roll, altitude, heading, lat_position, long_position = float(pitch), float(
+                roll), float(altitude), float(heading), float(lat_position), float(long_position)
 
             # Read the image and convert it to HSV color space
             hsv, frame = read_image_and_convert(output_dir, image_filename)
@@ -534,9 +561,7 @@ async def main_mission_1(drone, vid):
     sequence = 0
 
     while True:
-        # Capture frame and convert to HSV
-        _, frame = capture_and_convert(vid)
-
+        
         # Telemetry data that will come from the flight controller
         altitude_data = await communicator.get_altitude(drone)
         altitude = altitude_data.bottom_clearance_m
@@ -551,32 +576,28 @@ async def main_mission_1(drone, vid):
         velocity = await communicator.get_velocity(drone)
         print(velocity)
 
-        # Display the original frame and the grayscale frame
-        cv2.imshow('Original Frame', frame)
-
         # Check if new directory has to be created
         if velocity < 5:
-            
+
             if new_dir == True:
                 output_dir = create_directory(sequence)
                 new_dir = False
                 image_count = 0  # Reset numbering for images in new directory
                 sequence += 1
-                
+
             # Only save image every 1 seconds in the directory with
             # neccesary telemetry data
             if time.time() - last_time_saved >= save_delay:
-                image_filename = save_image(
-                    frame, image_count, output_dir, sequence)
-                
+                image_filename = save_image(vid, image_count, output_dir, sequence)
+
                 last_time_saved = time.time()
                 image_count += 1
-                
+
                 with open(f"{output_dir}/image_saved.csv", "a") as log_file:
                     log_file.write(
                         f"{output_dir}, {image_filename}, {pitch}, {roll}, {altitude}, {heading}, {lat_position}, {long_position}\n")
                 print("Captured frame...")
-            
+
             else:
                 new_dir = True
 
