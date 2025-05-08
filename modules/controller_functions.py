@@ -19,8 +19,7 @@ async def connect_drone() -> System:
     print("🔄 Connecting to drone...")
     try:
         # Connect to the drone to SITL
-        #await drone.connect(system_address="udp://:14540")
-        await drone.connect(system_address="serial:///dev/ttyAMA0:57600")
+        await drone.connect(system_address="udp://:14540")
         # Connect to the drone to real hardware
         #await drone.connect(system_address="serial:///dev/ttyAMA0:57600")
     except Exception as e:
@@ -252,3 +251,58 @@ async def default_land_and_disarm(drone: System):
 
     print("✅ Mission completed ✅")
     print("----------------------")
+
+
+    async def precision_land(drone, image_processing):
+        """
+        Performs precision landing:
+        1. Adjusts drone position based on target offset (from image)
+        2. Descends step-by-step after each correction
+        3. Repeats until landing height is reached, then initiates landing
+        """
+
+        scale = 1.0              # Scale factor: image offset → meters
+        descent_step = 0.3       # Descent step in meters per iteration
+        landing_threshold = 0.15 # Final altitude threshold for landing
+
+        # Start offboard mode
+        try:
+            await drone.offboard.start()
+            print("🟢 Offboard mode started")
+        except Exception as e:
+            print(f"⚠️ Offboard mode already active or failed to start: {e}")
+
+        # Get current altitude
+        position = await drone.telemetry.position().__anext__()
+        current_alt = position.relative_altitude_m
+        print(f"🚁 Starting precision landing at {current_alt:.2f} m")
+
+        while current_alt > landing_threshold:
+            # Get offset from image processing (x: left/right, y: forward/backward)
+            x_offset, y_offset = image_processing.get_target_offset()
+
+            # Convert offsets to NED frame
+            north = -y_offset * scale
+            east = x_offset * scale
+            down = descent_step
+
+            print(f"🎯 Offset: x={x_offset:.2f}, y={y_offset:.2f} → correcting N={north:.2f}, E={east:.2f}")
+
+            # Send NED position command with slight descent
+            await drone.offboard.set_position_ned(PositionNedYaw(
+                north_m=north,
+                east_m=east,
+                down_m=down,
+                yaw_deg=0.0
+            ))
+
+            await asyncio.sleep(0.5)  # Let drone stabilize
+
+            # Update current altitude
+            position = await drone.telemetry.position().__anext__()
+            current_alt = position.relative_altitude_m
+            print(f"\r⬇️ Current altitude: {current_alt:.2f} m", end="")
+
+        # Landing threshold reached
+        print("✅ Target reached – initiating landing")
+        await drone.action.land()
