@@ -52,6 +52,18 @@ def start_videoCapture():
 
     return vid
 
+def unsharp_masking(image):
+    """Apply unsharp masking to enhance image details."""
+
+    # Create a Gaussian blur of the image
+    blurred = cv2.GaussianBlur(image, (9, 9), 10.0)
+
+    # Subtract the blurred image from the original image
+    sharpened = cv2.addWeighted(image, 1.5, blurred, -0.5, 0)
+
+    return sharpened
+
+
 
 def capture_and_convert(vid):
     """Read a frame from the video capture and convert it to HSV color space."""
@@ -72,6 +84,8 @@ def read_image_and_convert(output_dir, image_name):
 
     # Capture frame
     frame = cv2.imread(output_dir + '/' + image_name)
+
+    frame = unsharp_masking(frame)
 
     # Convert frame to HSV color space
     hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
@@ -470,6 +484,8 @@ def module_main_mission_1_v2_processing(sqeuence, colorProfile, min_area):
             pitch, roll, altitude, heading, lat_position, long_position = int(pitch), int(
                 roll), int(altitude), int(heading), float(lat_position), float(long_position)
             
+            output_dir = os.path.basename(output_dir)
+
             # Read the image and convert it to HSV color space
             hsv, frame = read_image_and_convert(output_dir, image_filename)
             detectedObject = False
