@@ -5,10 +5,11 @@ import asyncio
 
 color_profile = 0  # 0: blue, 1: red, 2: yellow, 3: red2
 min_area = 900  # minimum area for contour detection
+mission = 1  # mission number
 
 async def main():
     drone = await cl.connect_drone()
-    vid = ip.start_videoCapture()
+    vid = ip.start_videoCapture(mission)
     sequence = await ip.main_mission_1(drone, vid)
     await ip.main_mission_1_post_processing(sequence, color_profile, min_area)
 

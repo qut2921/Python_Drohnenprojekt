@@ -9,9 +9,9 @@ lat_position = 0
 long_position = 0  # dummy variable
 color_profile = 0  # 0: blue, 1: red, 2: yellow, 3: red2
 min_area = 700  # minimum area for contour detection
+mission = 1  # mission number
 
-
-vid = image_processing.start_videoCapture()
+vid = image_processing.start_videoCapture(mission)
 sequence = image_processing.mtest_main_mission_1(
     vid, pitch, roll, altitude, heading, speed, lat_position, long_position)
 image_processing.main_mission_1_post_processing(sequence, color_profile, min_area)
