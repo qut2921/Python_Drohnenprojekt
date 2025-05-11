@@ -59,7 +59,7 @@ async def fly_path(drone, path_coords, reference_point):
     print("-- Arming")
     await drone.action.arm()
 
-    await drone.offboard.set_position_ned(PositionNedYaw(0.0, 0.0, -2.0, 0.0))
+    await drone.offboard.set_position_ned(PositionNedYaw(0.0, 0.0, -5.0, 0.0))
     try:
         await drone.offboard.start()
     except OffboardError as e:
