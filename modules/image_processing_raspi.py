@@ -11,6 +11,7 @@ import cv2  # type:ignore
 import numpy as np  # type:ignore
 from picamera2 import Picamera2, Preview
 from picamera2.controls import Controls
+import keyboard # type:ignore
 import datetime  # type:ignore
 import asyncio
 import modules.communicator as communicator
@@ -53,20 +54,19 @@ def set_sensor_properties():
     frame_width = 1920  # Maximum is 4608
     frame_height = 1080  # Maximum 2592
 
-    camera_config = {"size": (frame_width, frame_height), "format": "RGB888"}
-
+    #camera_config = {"size": (frame_width, frame_height), "format": "RGB888"}
+    camera_config = {"size": (frame_width, frame_height), "format": "YUV420"}
+    
     return camera_config
 
 
 def set_camera_controls(vid):
 
-    with vid.controls as ctrl:
-        ctrl.AeEnable = False
-        ctrl.AwbEnable = True
-        ctrl.AnalogueGain = 2.0
-        ctrl.ExposureTime = 3000
-        ctrl.NoiseReductionMode = 4
-        ctrl.Sharpness = 6
+    vid.set_controls({
+    "AeEnable": False,              # Disable auto exposure
+    "ExposureTime": 3125,          # Set exposure time in microseconds (e.g., 10000 �s = 10ms)
+    "AnalogueGain": 6.0             # Set the analog gain (1.0 is default, usually between 1 and 16)
+    })
 
 
 def start_videoCapture(mission_id):
@@ -88,7 +88,7 @@ def start_videoCapture(mission_id):
         vid.configure(config)
         vid.start_preview(Preview.QTGL)
 
-    if mission_id == 2 or mission_id == 3:
+    elif mission_id == 2 or mission_id == 3:
         config = vid.create_video_configuration(main=set_sensor_properties())
         vid.configure(config)
 
@@ -97,6 +97,7 @@ def start_videoCapture(mission_id):
 
     # Start camera with settings
     vid.start()
+
 
     if mission_id == 1:
         # Set camera controls for mission 1
@@ -340,10 +341,10 @@ def create_directory(sequence):
 def save_image(vid, frame_amount, output_dir, sequence):
     """Save the captured image to the specified directory."""
 
+    still_camera_config = vid.create_still_configuration(main=set_sensor_properties())
     # Capture frame
     image_filename = 'frame_{}_{}.jpg'.format(sequence-1, frame_amount)
-    vid.switch_mode_and_capture_file(
-        set_sensor_properties(), output_dir + '/' + image_filename)
+    vid.switch_mode_and_capture_file(still_camera_config, output_dir + '/' + image_filename)
     # cv2.imwrite(output_dir + '/' + image_filename, frame)
     print("Captured frame...")
     
@@ -448,20 +449,22 @@ def test_main_mission_1(
 
     while True:
         # Capture frame and convert to HSV
-        _, frame = capture_and_convert(vid)
+        
 
         # Telemetry data that will come from the flight controller
-        velocity = 2
+        velocity = test_velocity()
         altitude = altitude
         heading = heading
         lat_position = lat_position
         long_position = long_position
         pitch = pitch
         roll = roll
+    
+       # _,frame = capture_and_convert(vid)
+       # cv2.imshow("Camera Preview", frame)
 
         # Display the original frame and the grayscale frame
-        cv2.imshow('Original Frame', frame)
-
+        
         if velocity < 5:
             # Check if new directory has to be created
             if new_dir == True:
@@ -474,7 +477,7 @@ def test_main_mission_1(
             # neccesary telemetry data
             if time.time() - last_time_saved >= save_delay:
                 image_filename = save_image(
-                    frame, image_count, output_dir, sequence)
+                   vid, image_count, output_dir, sequence)
                 last_time_saved = time.time()
                 image_count += 1
                 with open(f"{output_dir}/image_saved.csv", "a") as log_file:
@@ -486,6 +489,7 @@ def test_main_mission_1(
             new_dir = True
 
         if cv2.waitKey(1) & 0xFF == ord('q'):
+            vid.stop()
             break
     cv2.destroyAllWindows()
     return sequence
