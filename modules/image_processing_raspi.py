@@ -61,8 +61,8 @@ def set_sensor_properties():
 def set_camera_controls(vid):
 
     with vid.controls as ctrl:
-        ctrl.AeEnable = True
-        ctrl.AwbEnable = False
+        ctrl.AeEnable = False
+        ctrl.AwbEnable = True
         ctrl.AnalogueGain = 2.0
         ctrl.ExposureTime = 3000
         ctrl.NoiseReductionMode = 4
@@ -124,7 +124,8 @@ def read_image_and_convert(output_dir, image_name):
     """
     Read a frame from the video capture and convert it to HSV color space.
     This function is used for post-processing of the images that have been shot
-    and saved along with the telemetry data. This function is used in mission1"""
+    and saved along with the telemetry data. This function is used in mission 1
+    """
 
     # Capture frame
     frame = cv2.imread(output_dir + '/' + image_name)
@@ -202,8 +203,13 @@ def remove_noise(mask):
     """Remove noise from the mask using morphological operations."""
 
     kernel = np.ones((5, 5), np.uint8)
-    mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel)  # Remove small dots
-    mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)  # Fill small holes
+    
+    # Remove small dots
+    mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel)
+    
+    # Fill small holes
+    mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)
+    
     return mask
 
 
@@ -254,8 +260,7 @@ def draw_rectangle_with_text(
     cv2.rectangle(frame, (x, y), (x+w, y+h), (0, 255, 255), 2)
     cv2.putText(
         frame, text, (text_x, text_y),
-        font, scale, text_colour, thickness
-    )
+        font, scale, text_colour, thickness)
 
     return frame
 
@@ -293,8 +298,7 @@ def locate_object_and_save(
                 x_distance, y_distance, lat_object, long_object = calculate_gps(
                     x, y, w, h,
                     pitch, roll, altitude, heading,
-                    lat_position, long_position, frame
-                )
+                    lat_position, long_position, frame)
 
                 # draw rectangle and text
                 frame = draw_rectangle_with_text(
@@ -342,6 +346,7 @@ def save_image(vid, frame_amount, output_dir, sequence):
         set_sensor_properties(), output_dir + '/' + image_filename)
     # cv2.imwrite(output_dir + '/' + image_filename, frame)
     print("Captured frame...")
+    
     return image_filename
 
 
@@ -353,13 +358,13 @@ def test_velocity():
     """
     velocity = 6*np.abs(np.sin(time.time()/4)) + 2  # [m/s]
     print(f"Velocity: {velocity:.2f} m/s")
+    
     return velocity
 
 
 def test_main_mission_2(
         mission_id, vid, colorProfile, min_area,
-        pitch, roll, altitude, heading, speed, lat_position, long_position
-):
+        pitch, roll, altitude, heading, speed, lat_position, long_position):
     """
     This is a concept for the image processing in Mission 1.
     The function continously locates the object in the frame and saves the 
@@ -388,8 +393,7 @@ def test_main_mission_2(
             None, None, mission_id,
             colorProfile, hsv, frame, min_area,
             detectedObject, pitch, roll, altitude, heading,
-            lat_position, long_position
-        )
+            lat_position, long_position)
 
         # Display the original frame and the grayscale frame
         cv2.putText(frame, f"Berechnung Distanz", (30, 30),
@@ -424,8 +428,7 @@ def test_main_mission_2(
 
 def test_main_mission_1(
         vid, pitch, roll, altitude,
-        heading, speed, lat_position, long_position
-):
+        heading, speed, lat_position, long_position):
     """
     This is the concept for the image processing in Mission 1.
     The function just saves the image after specified time intervals and
@@ -544,18 +547,7 @@ async def main_mission_1(drone, vid):
     while True:
 
         # Telemetry data that will come from the flight controller
-        altitude_data = await communicator.get_altitude(drone)
-        altitude = altitude_data.bottom_clearance_m
-        print(altitude)
-        heading = await communicator.get_heading(drone)
-        print(heading)
-        (lat_position, long_position, ) = await communicator.get_position(drone)
-        pitch = await communicator.get_pitch(drone)
-        print(pitch)
-        roll = await communicator.get_roll(drone)
-        print(roll)
-        velocity = await communicator.get_velocity(drone)
-        print(velocity)
+        health, altitude, heading, (lat_position, long_position), pitch, roll, velocity = await communicator.get_data_for_image_processing(drone)
 
         # Check if new directory has to be created
         if velocity < 5:
