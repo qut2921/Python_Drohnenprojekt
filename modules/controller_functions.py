@@ -2,6 +2,9 @@
 Comands to controle the mission with repeating modules
 
 """
+
+print(__file__)
+
 import asyncio
 from mavsdk import System
 from mavsdk.offboard import PositionNedYaw
@@ -86,7 +89,6 @@ async def default_takeoff(drone: System, target_altitude: float = 10.0):
         if abs(current_height - target_altitude) < 0.1:
             print("\n✅ Target altitude reached")
             break
-        await asyncio.sleep(0.2)
 
 
 async def check_battery(drone: System):
@@ -210,7 +212,6 @@ async def default_land_and_disarm(drone: System):
         if abs(current_height) < 0.1:
             print("\n✅ Landed")
             break
-        await asyncio.sleep(0.2)
     
     # Disarm the drone after landing
     await asyncio.sleep(2)
@@ -225,7 +226,7 @@ async def default_land_and_disarm(drone: System):
     print("----------------------")
 
 
-async def precision_land(drone, image_processing):
+async def precision_land(drone: System, image_processing):
     """
     Performs precision landing:
     1. Adjusts drone position based on target offset (from image)
@@ -235,9 +236,10 @@ async def precision_land(drone, image_processing):
 
     scale = 1.0              # Scale factor: image offset → meters
     descent_step = 0.3       # Descent step in meters per iteration
-    landing_threshold = 0.15 # Final altitude threshold for landing
+    landing_threshold = 0.5 # Final altitude threshold for landing
 
     # Start offboard mode
+    await drone.offboard.set_position_ned(PositionNedYaw(0.0, 0.0, 0.0, 0.0))
     try:
         await drone.offboard.start()
         print("🟢 Offboard mode started")
