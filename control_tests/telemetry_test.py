@@ -14,8 +14,12 @@ async def run():
     asyncio.ensure_future(print_position(drone))
     asyncio.ensure_future(print_heading(drone))
     asyncio.ensure_future(print_altitude(drone)) 
-    asyncio.ensure_future(print_roll(drone))
-    asyncio.ensure_future(print_pitch(drone))
+    #asyncio.ensure_future(print_roll(drone))
+    #asyncio.ensure_future(print_pitch(drone))
+    asyncio.ensure_future(print_euler(drone))
+    asyncio.ensure_future(print_velocity(drone))
+    asyncio.ensure_future(monitor_communication(drone))
+    
 
     while True:
         await asyncio.sleep(1)
