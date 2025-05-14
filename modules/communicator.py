@@ -7,6 +7,7 @@ If communication is lost, an exception will be raised after a timeout.
 import asyncio
 import mavsdk
 
+
 async def get_battery_status(drone):
     try:
         battery = await asyncio.wait_for(drone.telemetry.battery().__anext__(), timeout=5.0)
@@ -98,20 +99,37 @@ async def get_velocity(drone):
 
 
 async def monitor_communication(drone):
-  
-    health = drone.telemetry.health()
-    print(health)
-    altitude_data = await get_altitude(drone)
-    altitude = altitude_data.bottom_clearance_m
-    print(altitude)
-    heading = await get_heading(drone)
-    print(heading)
-    (lat_position, long_position, ) = await get_position(drone)
-    pitch = await get_pitch(drone)
-    print(pitch)
-    roll = await get_roll(drone)
-    print(roll)
-    velocity = await get_velocity(drone)
-    print(velocity)
+    try:
+        state = await asyncio.wait_for(drone.core.connection_state().__anext__(), timeout=5.0)
+        return state
 
-    return health, altitude, heading, (lat_position, long_position), pitch, roll, velocity
+    except asyncio.TimeoutError:
+        print("Timed out waiting for status data.")
+        state = None
+        return state
+
+
+async def get_parameters_for_image_processing(drone):
+    # Set a global timeout for all operations combined
+    results = await asyncio.gather(
+        get_position(drone),
+        get_euler(drone),
+        get_heading(drone),
+        monitor_communication(drone),
+        get_velocity(drone),
+    )
+
+    positions, euler, heading, status, velocity = results
+
+    if None in results:
+        print("One or more parameters returned None. Exiting function.")
+        return
+
+    # Unpack the results
+    latitude = positions.latitude_deg
+    longitude = positions.longitude_deg
+    altitude = positions.relative_altitude_m
+    roll = euler.roll_deg
+    pitch = euler.pitch_deg
+    yaw = euler.yaw_deg
+    
