@@ -18,7 +18,7 @@ async def get_heading(drone):
 
 async def get_altitude(drone):
     async for altitude in drone.telemetry.altitude():
-        return altitude.relative_m
+        return altitude
 
 
 async def get_roll(drone):
@@ -43,7 +43,7 @@ async def get_velocity(drone):
     
 async def get_data_for_image_processing(drone):
   
-    health = await drone.telemetry.health()
+    health = drone.telemetry.health()
     print(health)
     altitude_data = await get_altitude(drone)
     altitude = altitude_data.bottom_clearance_m
