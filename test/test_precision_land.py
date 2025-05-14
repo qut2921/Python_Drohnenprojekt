@@ -1,5 +1,10 @@
 # test_precision_land.py
 
+# import modules in different directories
+import sys
+import os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
 import asyncio
 from mavsdk import System
 from mavsdk.offboard import PositionNedYaw
@@ -7,21 +12,9 @@ import modules.controller_functions as cl
 import random
 
 class DummyImageProcessing:
-    def __init__(self):
-        self.x = 0.6
-        self.y = -0.4
-
     def get_target_offset(self):
-        # Simulate reducing offset (x/y → 0)
-        if abs(self.x) > 0.05:
-            self.x *= 0.8
-        else:
-            self.x = 0.0
-        if abs(self.y) > 0.05:
-            self.y *= 0.8
-        else:
-            self.y = 0.0
-        return self.x, self.y
+        return 0.2, -0.3
+
 
 async def run():
     drone = System()
