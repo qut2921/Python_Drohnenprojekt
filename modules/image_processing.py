@@ -52,6 +52,18 @@ def start_videoCapture():
 
     return vid
 
+def unsharp_masking(image):
+    """Apply unsharp masking to enhance image details."""
+
+    # Create a Gaussian blur of the image
+    blurred = cv2.GaussianBlur(image, (9, 9), 10.0)
+
+    # Subtract the blurred image from the original image
+    sharpened = cv2.addWeighted(image, 1.5, blurred, -0.5, 0)
+
+    return sharpened
+
+
 
 def capture_and_convert(vid):
     """Read a frame from the video capture and convert it to HSV color space."""
@@ -65,12 +77,15 @@ def capture_and_convert(vid):
         return None, None, None
     else:
         return success, hsv, frame
-    
+
+
 def read_image_and_convert(output_dir, image_name):
     """Read a frame from the video capture and convert it to HSV color space."""
 
     # Capture frame
-    frame = cv2.imread(output_dir + '/'+ image_name)
+    frame = cv2.imread(output_dir + '/' + image_name)
+
+    frame = unsharp_masking(frame)
 
     # Convert frame to HSV color space
     hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
@@ -80,7 +95,7 @@ def read_image_and_convert(output_dir, image_name):
 def calculate_gps(
         rect_x, rect_y, rect_w, rect_h,
         pitch_telem, roll_telem, altitude_telem, heading_telem,
-        gps_position, frame):
+        lat_position, long_position, frame):
     """Calculate GPS coordinates based on the rectangle position and telemetry data.
 
     rect_x, rect_y: coordinates of the rectangle
@@ -134,74 +149,11 @@ def calculate_gps(
     # Calculate GPS coordinates for small distances https://kompf.de/gps/distcalc.html
     delta_lat = n_ned / 111320  # [degrees]
     delta_lon = e_ned / \
-        (111320 * np.cos(np.radians(gps_position[0])))  # [degrees]
-    lat_object = gps_position[0] + delta_lat  # [degrees]
-    lon_object = gps_position[1] + delta_lon  # [degrees]
-
-    return x_distance, y_distance, lat_object, lon_object
-
-
-def calculate_gps_2(
-        rect_x, rect_y, rect_w, rect_h,
-        pitch_telem, roll_telem, altitude_telem, heading_telem,
-        lat_position, long_position, frame):
-    """Calculate GPS coordinates based on the rectangle position and telemetry data.
-
-    rect_x, rect_y: coordinates of the rectangle
-
-    rect_w, rect_h: width and height of the rectangle
-
-    pitch_telem, roll_telem: telemetry data for pitch and roll
-
-    altitude_telem: telemetry data for altitude
-
-    heading_telem: telemetry data for heading
-
-    gps_position: current GPS position
-
-    frame: current frame from the video capture
-    """
-    # Get telemetry data
-    pitch = pitch_telem
-    roll = roll_telem  # dummy variable
-    altitude = altitude_telem  # dummy variable [m]
-    heading = heading_telem  # dummy variable [degrees]
-
-    # Get rectangle center coordinates
-    pixel_x = rect_x + (rect_w / 2)  # [pixel]
-    pixel_y = rect_y + (rect_h / 2)  # [pixel]
-
-    # Camera sensor properties
-    FOV_horizontal = 66  # [degrees]
-    FOV_vertical = 41  # [degrees]
-
-    # Get frame dimensions
-    frame_height, frame_width = frame.shape[:2]
-
-    # Calculate trigonometric angles to calculate distances
-    delta = FOV_horizontal *((pixel_x / frame_width) - 0.5) + pitch  # [degrees]
-    epsilon = FOV_vertical * ((pixel_y / frame_height) - 0.5) + roll  # [degrees]
-
-    # Calculate distances in frame coordinate system
-    x_distance = altitude * np.tan(np.radians(delta))  # [m]
-    y_distance = altitude * np.tan(np.radians(epsilon))  # [m]
-
-    # Transform to NED coordinate system by rotating the frame around heading
-    # Calculate distances in NED coordinate system
-    n_ned = x_distance * np.cos(np.radians(heading)) + \
-        y_distance * np.sin(np.radians(heading))  # [m]
-    e_ned = x_distance * np.sin(np.radians(heading)) - \
-        y_distance * np.cos(np.radians(heading))  # [m]
-
-    # Calculate GPS coordinates for small distances https://kompf.de/gps/distcalc.html
-    delta_lat = n_ned / 111320  # [degrees]
-    delta_lon = e_ned / \
         (111320 * np.cos(np.radians(lat_position)))  # [degrees]
     lat_object = lat_position + delta_lat  # [degrees]
     lon_object = long_position + delta_lon  # [degrees]
 
     return x_distance, y_distance, lat_object, lon_object
-
 
 
 def remove_noise(mask):
@@ -253,7 +205,7 @@ def draw_rectangle_with_text(
 
 def locate_object(
         colorProfile, hsv, frame, min_area, detectedObject,
-        pitch, roll, altitude, heading, gps_position):
+        pitch, roll, altitude, heading, lat_position, long_position):
     """Locate the object in the frame based on the specified color profile."""
     # mask for the specified color profile
     name, hsv_lower, hsv_upper = set_colorProfiles(colorProfile)
@@ -278,7 +230,7 @@ def locate_object(
                 x_distance, y_distance, _, _ = calculate_gps(
                     x, y, w, h,
                     pitch, roll, altitude, heading,
-                    gps_position, frame
+                    lat_position, long_position,frame
                 )
 
                 # draw rectangle and text
@@ -298,8 +250,8 @@ def locate_object(
     return mask, hsv, frame,
 
 
-def locate_object_2(
-        output_dir, image_filename,colorProfile, hsv, 
+def locate_object_and_save(
+        output_dir, image_filename, colorProfile, hsv,
         frame, min_area, detectedObject,
         pitch, roll, altitude, heading, lat_position, long_position):
     """Locate the object in the frame based on the specified color profile."""
@@ -323,19 +275,16 @@ def locate_object_2(
                 x, y, w, h = cv2.boundingRect(cnt)
 
                 # calculate GPS coordinates
-                x_distance, y_distance, lat_object, long_object = calculate_gps_2(
+                x_distance, y_distance, lat_object, long_object = calculate_gps(
                     x, y, w, h,
                     pitch, roll, altitude, heading,
                     lat_position, long_position, frame
                 )
 
-
-
                 # draw rectangle and text
                 frame = draw_rectangle_with_text(
                     frame, name, x, y, w, h,
                     x_distance, y_distance)
-                
 
                 with open(f"{output_dir}/image_processed.csv", "a") as processed_log_file:
                     processed_log_file.write(
@@ -381,8 +330,7 @@ def save_data():
 
 
 def test_velocity():
-
-    # simulate velocity with sinus
+    """Test function to simulate velocity."""
     velocity = 6*np.abs(np.sin(time.time()/4)) + 2  # [m/s]
     print(f"Velocity: {velocity:.2f} m/s")
     return velocity
@@ -390,9 +338,12 @@ def test_velocity():
 
 def module_main_mission_1(
         vid, colorProfile, min_area,
-        pitch, roll, altitude, heading, speed, gps_position
+        pitch, roll, altitude, heading, speed, lat_position, long_position
 ):
-
+    """This is a concept for the image processing in Mission 1.
+    The function continously locates the object in the frame and saves the 
+    image after specified time intervals.
+    The telemetry data is not saved in this version."""
     # Initialize object detection variables
     detectedObject = False
     speed = speed
@@ -414,7 +365,8 @@ def module_main_mission_1(
 
         mask, hsv, frame = locate_object(
             colorProfile, hsv, frame, min_area,
-            detectedObject, pitch, roll, altitude, heading, gps_position
+            detectedObject, pitch, roll, altitude, heading,
+            lat_position, long_position
         )
 
         # Display the original frame and the grayscale frame
@@ -452,9 +404,12 @@ def module_main_mission_1_v2(
         vid, pitch, roll, altitude,
         heading, speed, lat_position, long_position
 ):
-
+    """This is the second concept for the image processing in Mission 1.
+    The function just saves the image after specified time intervals and
+    will not locate the object right away. The telemetry data is saved as
+    timestamp for each image in order to calculate the distance later
+    into a CSV files."""
     # Initialize object detection variables
-    detectedObject = False
     speed = speed
 
     # Initialize image saving variables
@@ -464,12 +419,12 @@ def module_main_mission_1_v2(
     sequence = 0
 
     while True:
-
         # Capture frame and convert to HSV
-        success, hsv, frame = capture_and_convert(vid)
+        success, _, frame = capture_and_convert(vid)
         if not success:
             break
-
+        
+        # Telemetry data that will come from the flight controller
         velocity = test_velocity()
         altitude = altitude
         heading = heading
@@ -482,7 +437,6 @@ def module_main_mission_1_v2(
         cv2.imshow('Original Frame', frame)
 
         if velocity < 5:
-
             # Check if new directory has to be created
             if new_dir == True:
                 output_dir = create_directory(sequence)
@@ -490,7 +444,8 @@ def module_main_mission_1_v2(
                 image_count = 0  # Reset numbering for images in new directory
                 sequence += 1
 
-            # Only save image every 1 seconds
+            # Only save image every 1 seconds in the directory with
+            # neccesary telemetry data
             if time.time() - last_time_saved >= save_delay:
                 image_filename = save_image(
                     frame, image_count, output_dir, sequence)
@@ -511,25 +466,37 @@ def module_main_mission_1_v2(
     return sequence
 
 
-
-
 def module_main_mission_1_v2_processing(sqeuence, colorProfile, min_area):
-    """Process the saved images and telemetry data."""
+    """After acquiring the images, this function processes and locates
+    the object by reading the CSV files. In case an object is located, a 
+    second CSV files with the GPS object coordinates is created."""
     # Read the CSV file with telemetry data
     for i in range(sqeuence):
-        
         with open(f"BildsequenzTest_{i}/image_saved.csv", "r") as log_file:
             lines = log_file.readlines()
 
-    # Process each line in the CSV file
+        # Process each line in the CSV file
         for line in lines:
+            # Split the line at ", "" to extract data
             output_dir, image_filename, pitch, roll, altitude, heading, lat_position, long_position = line.strip().split(", ")
-            pitch, roll, altitude, heading, lat_position, long_position = int(pitch), int(roll), int(altitude), int(heading), float(lat_position), float(long_position)
+            
+            # Convert into integers
+            pitch, roll, altitude, heading, lat_position, long_position = int(pitch), int(
+                roll), int(altitude), int(heading), float(lat_position), float(long_position)
+            
+            output_dir = os.path.basename(output_dir)
+
+            # Read the image and convert it to HSV color space
             hsv, frame = read_image_and_convert(output_dir, image_filename)
             detectedObject = False
-            _, _, frame = locate_object_2(output_dir, image_filename,colorProfile, hsv, frame, min_area, detectedObject, pitch, roll, altitude, heading, lat_position, long_position)
+            
+            # Locate the object and save locations in CSV file
+            _, _, frame = locate_object_and_save(
+                output_dir, image_filename, colorProfile, hsv, frame,
+                min_area, detectedObject, pitch, roll, altitude,
+                heading, lat_position, long_position
+            )
+            
+            # Save the processed image
             cv2.imwrite(output_dir + '/processed_' + image_filename, frame)
             print("Captured frame...")
-
-
-            
