@@ -48,13 +48,29 @@ async def print_altitude(drone):
     async for altitude in drone.telemetry.altitude():
         print(f"Altitude: {altitude}")
 
-async def print_roll(drone):
+async def print_euler(drone):
     async for euler in drone.telemetry.attitude_euler():
-        print(f"Roll: {euler.roll_deg:.2f}°")
+        print(f"Euler angles: {euler}")
 
-async def print_pitch(drone):
-    async for euler in drone.telemetry.attitude_euler():
-        print(f"Pitch: {euler.pitch_deg:.2f}°")
+async def print_velocity(drone):
+    async for velocity in drone.telemetry.velocity_body():
+        print(f"Velocity: {velocity}")
+
+async def monitor_communication(drone):
+     async for state in drone.core.connection_state():
+        if state.is_connected:
+            print("✅ Connected")
+        else:
+            print("❌ Disconnected")
+    
+
+#async def print_roll(drone):
+#    async for euler in drone.telemetry.attitude_euler():
+#        print(f"Roll: {euler.roll_deg:.2f}°")
+
+#async def print_pitch(drone):
+#    async for euler in drone.telemetry.attitude_euler():
+#        print(f"Pitch: {euler.pitch_deg:.2f}°")
 
 
 if __name__ == "__main__":
