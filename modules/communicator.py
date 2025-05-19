@@ -110,6 +110,12 @@ async def monitor_communication(drone):
 
 
 async def get_parameters_for_image_processing(drone):
+    """This function gets the parameters needed for image processing.
+    The function are executed in parallel to save time.
+    Once a function times out due to a lost of communication, the function will
+    break which will lead to RTL.
+    """
+    
     # Set a global timeout for all operations combined
     results = await asyncio.gather(
         get_position(drone),
