@@ -6,6 +6,7 @@ If communication is lost, an exception will be raised after a timeout.
 
 import asyncio
 import mavsdk
+import numpy as np
 
 
 async def get_battery_status(drone):
@@ -115,21 +116,23 @@ async def get_parameters_for_image_processing(drone):
     Once a function times out due to a lost of communication, the function will
     break which will lead to RTL.
     """
-    
+
     # Set a global timeout for all operations combined
     results = await asyncio.gather(
         get_position(drone),
         get_euler(drone),
-        get_heading(drone),
+        # get_heading(drone),
         monitor_communication(drone),
         get_velocity(drone),
     )
 
-    positions, euler, heading, status, velocity = results
+    positions, euler, status, velocity = results
+    # positions, euler, status = results
 
     if None in results:
         print("One or more parameters returned None. Exiting function.")
-        return
+        key = 1
+        return None, None, None, None, None, None, None, None, key
 
     # Unpack the results
     latitude = positions.latitude_deg
@@ -138,4 +141,9 @@ async def get_parameters_for_image_processing(drone):
     roll = euler.roll_deg
     pitch = euler.pitch_deg
     yaw = euler.yaw_deg
-    
+    scalar_velocity = np.sqrt(
+        np.power(velocity.north_ms, 2)+np.power(velocity.east_ms, 2))
+    key = 0
+
+    return latitude, longitude, altitude, roll, pitch, yaw, status, scalar_velocity, key
+    # return latitude, longitude, roll, pitch, yaw, status, key
