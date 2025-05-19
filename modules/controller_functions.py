@@ -7,6 +7,7 @@ print(__file__)
 
 import asyncio
 from mavsdk import System
+from mavsdk.offboard import VelocityNedYaw
 from mavsdk.offboard import PositionNedYaw
 
 
@@ -226,57 +227,66 @@ async def default_land_and_disarm(drone: System):
     print("----------------------")
 
 
-async def precision_land(drone: System, image_processing):
+def pid_update(error, dt, state, kp, ki, kd, max_output=1.0):
+    state["integral"] += error * dt
+    derivative = (error - state["prev_error"]) / dt
+    output = kp * error + ki * state["integral"] + kd * derivative
+    state["prev_error"] = error
+    return max(-max_output, min(max_output, output)), state
+
+async def precision_land_velocity_pid_method(drone, image_processing):
     """
-    Performs precision landing:
-    1. Adjusts drone position based on target offset (from image)
-    2. Descends step-by-step after each correction
-    3. Repeats until landing height is reached, then initiates landing
+    Precision Landing via velocity control using PID implemented as function.
+    Landing occurs when height < 0.5 m, regardless of position error.
     """
 
-    scale = 1.0              # Scale factor: image offset → meters
-    descent_step = 0.3       # Descent step in meters per iteration
-    landing_threshold = 0.5 # Final altitude threshold for landing
+    # Reglerparameter
+    pid_params = {"kp": 0.8, "ki": 0.1, "kd": 0.08}
+    max_speed = 1.0
+    descent_speed = 0.3  # m/s
+    landing_threshold = 0.5  # m
+    dt = 0.1  # 100 ms
 
-    # Start offboard mode
-    await drone.offboard.set_position_ned(PositionNedYaw(0.0, 0.0, 0.0, 0.0))
+    # PID-Zustände
+    state_north = {"integral": 0.0, "prev_error": 0.0}
+    state_east  = {"integral": 0.0, "prev_error": 0.0}
+
+    # Dummy-Setpoint zum Aktivieren von Offboard
+    await drone.offboard.set_velocity_ned(VelocityNedYaw(0, 0, 0, 0))
+    await asyncio.sleep(0.1)
+
     try:
         await drone.offboard.start()
         print("🟢 Offboard mode started")
     except Exception as e:
-        print(f"⚠️ Offboard mode already active or failed to start: {e}")
+        print(f"❌ Failed to start offboard: {e}")
+        return
 
-    # Get current altitude
-    position = await drone.telemetry.position().__anext__()
-    current_alt = position.relative_altitude_m
-    print(f"🚁 Starting precision landing at {current_alt:.2f} m")
+    while True:
+        # 1. Bildverarbeitung liefert Abweichung in m
+        delta_north, delta_east = image_processing.get_target_offset()
 
-    while current_alt > landing_threshold:
-        # Get offset from image processing (x: left/right, y: forward/backward)
-        x_offset, y_offset = image_processing.get_target_offset()
+        # 2. PID-Regelung
+        v_north, state_north = pid_update(delta_north, dt, state_north, **pid_params, max_output=max_speed)
+        v_east,  state_east  = pid_update(delta_east, dt, state_east, **pid_params, max_output=max_speed)
+        v_down = descent_speed
 
-        # Convert offsets to NED frame
-        north = -y_offset * scale
-        east = x_offset * scale
-        down = descent_step
-
-        print(f"🎯 Offset: x={x_offset:.2f}, y={y_offset:.2f} → correcting N={north:.2f}, E={east:.2f}")
-
-        # Send NED position command with slight descent
-        await drone.offboard.set_position_ned(PositionNedYaw(
-            north_m=north,
-            east_m=east,
-            down_m=down,
+        # 3. Steuerbefehl senden
+        await drone.offboard.set_velocity_ned(VelocityNedYaw(
+            north_m_s=-v_north,  # negative Richtung → Annäherung
+            east_m_s=-v_east,
+            down_m_s=v_down,
             yaw_deg=0.0
         ))
 
-        await asyncio.sleep(0.5)  # Let drone stabilize
-
-        # Update current altitude
+        # 4. Höhe prüfen
         position = await drone.telemetry.position().__anext__()
         current_alt = position.relative_altitude_m
-        print(f"⬇️ Current altitude: {current_alt:.2f} m")
+        print(f"\r✈️ vN: {v_north:.2f}, vE: {v_east:.2f}, Alt: {current_alt:.2f} m", end="")
 
-    # Landing threshold reached
-    print("✅ Target reached – initiating landing")
-    await drone.action.land()
+        if current_alt < landing_threshold:
+            print("\n✅ Altitude < 0.5 m → Landing")
+            await drone.action.land()
+            break
+
+        await asyncio.sleep(dt)
