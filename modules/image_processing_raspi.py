@@ -582,7 +582,10 @@ async def main_mission_1(drone, vid):
         latitude, longitude, altitude, roll, pitch, yaw, status, scalar_velocity, key = await cm.get_parameters_for_image_processing(drone)
 
         if key == 1:
-            print("COMMUNICATION LOST!")
+            for i in range(10):
+                print("COMMUNICATION LOST!")
+                asyncio.sleep(0.5)
+            
             break
 
         # Check if new directory has to be created
@@ -598,7 +601,10 @@ async def main_mission_1(drone, vid):
             # neccesary telemetry data
             if time.time() - last_time_saved >= save_delay:
                 image_filename = save_image(
-                    vid, image_count, output_dir, sequence)
+                    vid, 
+                    image_count, 
+                    output_dir, 
+                    sequence)
 
                 last_time_saved = time.time()
                 image_count += 1
@@ -608,8 +614,8 @@ async def main_mission_1(drone, vid):
                         f"{output_dir}, {image_filename}, {pitch}, {roll}, {altitude}, {yaw}, {latitude}, {longitude}\n")
                 print("Captured frame...")
 
-            else:
-                new_dir = True
+        else:
+            new_dir = True
 
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
