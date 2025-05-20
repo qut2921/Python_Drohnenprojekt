@@ -11,6 +11,7 @@ logging.basicConfig(level=logging.INFO)
 
 # Funktion zum Einlesen der Plan-Datei
 # und Extrahieren der Polygon-Koordinaten
+# test
 
 
 def get_edgesfromplan(plath):
