@@ -2,19 +2,53 @@ import asyncio
 import numpy as np
 import shapely.geometry as geom
 import json
+import os
 from mavsdk import System
 from mavsdk.offboard import OffboardError, PositionNedYaw
+import logging
+import pandas as pd
+logging.basicConfig(level=logging.INFO)
+
+# Funktion zum Einlesen der Plan-Datei
+# und Extrahieren der Polygon-Koordinaten
 
 
 def get_edgesfromplan(plath):
+    if not os.path.exists(plath):
+        logging.info(f"Fehler: Datei {plath} wurde nicht gefunden.")
+        exit(1)
     with open(plath, 'r') as file:
         json_data = json.load(file)
     edges = json_data['geoFence']["polygons"][0]["polygon"]
-    print(f"Edges: {edges}")
+    logging.info(f"Edges: {edges}")
     return edges
 
-# Rasterpunkte erzeugen
 
+# Funktion zum Einlesen der Excel-Datei alternative
+def get_edges_from_excel(path):
+    if not os.path.exists(path):
+        logging.info(f"Fehler: Datei {path} wurde nicht gefunden.")
+        exit(1)
+    try:
+        df = pd.read_excel(path)
+        if 'lat' not in df.columns or 'lon' not in df.columns:
+            logging.info(
+                "Fehler: Spalten 'lat' und 'lon' wurden nicht gefunden."
+            )
+            exit(1)
+        # Erstelle eine Liste von Dictionaries, wie sie MAVSDK oder GeoFence
+        # ggf. erwartet:
+        edges = [{"latitude": row['lat'], "longitude": row['lon']} for _, row
+                 in df.iterrows()]
+        logging.info(f"Edges: {edges}")
+        return edges
+
+    except Exception as e:
+        logging.info(f"Fehler beim Lesen der Excel-Datei: {e}")
+        exit(1)
+
+
+# Rasterpunkte erzeugen
 
 def generate_cell_center_points(polygon: geom.Polygon, spacing=0.0002,
                                 padding=0.00005):
@@ -56,58 +90,83 @@ def geodetic_to_ned(lat, lon, alt, ref_lat, ref_lon, ref_alt=0):
 
 # Offboard-Flugfunktion
 async def fly_path(drone, path_coords, reference_point):
-    print("-- Arming")
+    logging.info("-- Arming")
     await drone.action.arm()
 
-    await drone.offboard.set_position_ned(PositionNedYaw(0.0, 0.0, -5.0, 0.0))
+    await drone.offboard.set_position_ned(PositionNedYaw(0.0, 0.0, -2.0, 0.0))
     try:
         await drone.offboard.start()
     except OffboardError as e:
-        print(f"Offboard start failed: {e}")
+        logging.info(f"Offboard start failed: {e}")
         await drone.action.disarm()
         return
 
-    print("-- Starting mission")
+    logging.info("-- Starting mission")
     for lat, lon in path_coords:
         north, east, down = geodetic_to_ned(lat, lon, 0, reference_point[1],
                                             reference_point[0])
-        print(f"Flying to NED: N={north:.1f}, E={east:.1f}, D={down:.1f}")
+        logging.info(
+            f"Flying to NED: N={north:.1f}, E={east:.1f}, D={down:.1f}"
+        )
         await drone.offboard.set_position_ned(PositionNedYaw(north, east, -5.0,
                                                              0.0))
         await asyncio.sleep(5)
 
-    print("-- Landing")
+    logging.info("-- Landing")
     await drone.action.land()
 
 # Hauptprogramm
 
+
 async def main(path):
+    # Polygon aus Plan-Datei laden
     polygon_coords = get_edgesfromplan(path)
     polygon = geom.Polygon(polygon_coords)
 
+    # Rasterpunkte berechnen
     path_coords = generate_cell_center_points(polygon)
     if not path_coords:
-        print("Keine gültigen Rasterpunkte gefunden.")
+        logging.info("Keine gültigen Rasterpunkte gefunden.")
         return
 
     start_point = path_coords[0]
 
+    # Verbindung zur Drohne aufbauen
     drone = System()
-    print("Connecting to drone on udp://:14540 ...")
+    logging.info("Connecting to drone on udp://:14540 ...")
     await drone.connect(system_address="udp://:14540")
 
-    print("Warte auf Verbindung...")
-    async for state in drone.core.connection_state():
-        if state.is_connected:
-            print("-- Verbunden!")
-            break
+    # Warten auf Verbindung
+    logging.info("Warte auf Verbindung...")
+    try:
+        async def wait_for_connection(drone):
+            async for state in drone.core.connection_state():
+                if state.is_connected:
+                    logging.info("-- Verbunden!")
+                    return
 
-    print("Warte auf GPS-Fix...")
-    async for health in drone.telemetry.health():
-        if health.is_global_position_ok:
-            print("-- GPS OK")
-            break
+        await asyncio.wait_for(wait_for_connection(drone), timeout=20)
+    except asyncio.TimeoutError:
+        logging.info(
+            "Fehler: Verbindung zur Drohne konnte nicht hergestellt werden."
+        )
+        return
 
+    # Warten auf GPS-Fix
+    logging.info("Warte auf GPS-Fix...")
+    try:
+        async def wait_for_gps(drone):
+            async for health in drone.telemetry.health():
+                if health.is_global_position_ok:
+                    logging.info("-- GPS OK")
+                    return
+
+        await asyncio.wait_for(wait_for_gps(drone), timeout=20)
+    except asyncio.TimeoutError:
+        logging.info("Fehler: GPS-Fix konnte nicht erreicht werden.")
+        return
+
+    # Starte Flug entlang des berechneten Pfades
     await fly_path(drone, path_coords, start_point)
 
 # Start
