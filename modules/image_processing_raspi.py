@@ -11,10 +11,8 @@ import cv2  # type:ignore
 import numpy as np  # type:ignore
 from picamera2 import Picamera2, Preview
 from picamera2.controls import Controls
-import keyboard # type:ignore
-import datetime  # type:ignore
 import asyncio
-import modules.communicator as communicator
+import modules.communicator as cm
 
 
 def set_colorProfiles(n):
@@ -54,18 +52,20 @@ def set_sensor_properties():
     frame_width = 1920  # Maximum is 4608
     frame_height = 1080  # Maximum 2592
 
-    #camera_config = {"size": (frame_width, frame_height), "format": "RGB888"}
+    # camera_config = {"size": (frame_width, frame_height), "format": "RGB888"}
     camera_config = {"size": (frame_width, frame_height), "format": "YUV420"}
-    
+
     return camera_config
 
 
 def set_camera_controls(vid):
 
     vid.set_controls({
-    "AeEnable": False,              # Disable auto exposure
-    "ExposureTime": 3125,          # Set exposure time in microseconds (e.g., 10000 �s = 10ms)
-    "AnalogueGain": 6.0             # Set the analog gain (1.0 is default, usually between 1 and 16)
+        "AeEnable": False,              # Disable auto exposure
+        # Set exposure time in microseconds (e.g., 10000 �s = 10ms)
+        "ExposureTime": 3125,
+        # Set the analog gain (1.0 is default, usually between 1 and 16)
+        "AnalogueGain": 6.0
     })
 
 
@@ -97,7 +97,6 @@ def start_videoCapture(mission_id):
 
     # Start camera with settings
     vid.start()
-
 
     if mission_id == 1:
         # Set camera controls for mission 1
@@ -197,20 +196,20 @@ def calculate_gps(
     lat_object = lat_position + delta_lat  # [degrees]
     lon_object = long_position + delta_lon  # [degrees]
 
-    return x_distance, y_distance, lat_object, lon_object
+    return x_distance, y_distance, lat_object, lon_object, delta_lat, delta_lon
 
 
 def remove_noise(mask):
     """Remove noise from the mask using morphological operations."""
 
     kernel = np.ones((5, 5), np.uint8)
-    
+
     # Remove small dots
     mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel)
-    
+
     # Fill small holes
     mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)
-    
+
     return mask
 
 
@@ -296,17 +295,31 @@ def locate_object_and_save(
                 x, y, w, h = cv2.boundingRect(cnt)
 
                 # calculate GPS coordinates
-                x_distance, y_distance, lat_object, long_object = calculate_gps(
-                    x, y, w, h,
-                    pitch, roll, altitude, heading,
-                    lat_position, long_position, frame)
-
-                # draw rectangle and text
-                frame = draw_rectangle_with_text(
-                    frame, name, x, y, w, h,
-                    x_distance, y_distance)
+                x_distance, y_distance, lat_object, long_object, delta_lat, delta_lon = calculate_gps(
+                    x,
+                    y,
+                    w,
+                    h,
+                    pitch,
+                    roll,
+                    altitude,
+                    heading,
+                    lat_position,
+                    long_position,
+                    frame)
 
                 if mission_id == 1:
+                    # draw rectangle and text
+                    frame = draw_rectangle_with_text(
+                        frame,
+                        name,
+                        x,
+                        y,
+                        w,
+                        h,
+                        x_distance,
+                        y_distance)
+
                     with open(f"{output_dir}/image_processed.csv", "a") as processed_log_file:
                         processed_log_file.write(
                             f"{output_dir}, {image_filename}, {x_distance}, {y_distance}, {lat_object}, {long_object}\n")
@@ -320,8 +333,10 @@ def locate_object_and_save(
             else:
                 # Reset flag if area is too small
                 detectedObject = False
-    
-    return mask, hsv, frame,
+
+        
+    return frame, delta_lat, delta_lon
+
 
 
 def create_directory(sequence):
@@ -341,13 +356,15 @@ def create_directory(sequence):
 def save_image(vid, frame_amount, output_dir, sequence):
     """Save the captured image to the specified directory."""
 
-    still_camera_config = vid.create_still_configuration(main=set_sensor_properties())
+    still_camera_config = vid.create_still_configuration(
+        main=set_sensor_properties())
     # Capture frame
     image_filename = 'frame_{}_{}.jpg'.format(sequence-1, frame_amount)
-    vid.switch_mode_and_capture_file(still_camera_config, output_dir + '/' + image_filename)
+    vid.switch_mode_and_capture_file(
+        still_camera_config, output_dir + '/' + image_filename)
     # cv2.imwrite(output_dir + '/' + image_filename, frame)
     print("Captured frame...")
-    
+
     return image_filename
 
 
@@ -359,7 +376,7 @@ def test_velocity():
     """
     velocity = 6*np.abs(np.sin(time.time()/4)) + 2  # [m/s]
     print(f"Velocity: {velocity:.2f} m/s")
-    
+
     return velocity
 
 
@@ -449,7 +466,6 @@ def test_main_mission_1(
 
     while True:
         # Capture frame and convert to HSV
-        
 
         # Telemetry data that will come from the flight controller
         velocity = test_velocity()
@@ -459,12 +475,12 @@ def test_main_mission_1(
         long_position = long_position
         pitch = pitch
         roll = roll
-    
+
        # _,frame = capture_and_convert(vid)
        # cv2.imshow("Camera Preview", frame)
 
         # Display the original frame and the grayscale frame
-        
+
         if velocity < 5:
             # Check if new directory has to be created
             if new_dir == True:
@@ -477,7 +493,7 @@ def test_main_mission_1(
             # neccesary telemetry data
             if time.time() - last_time_saved >= save_delay:
                 image_filename = save_image(
-                   vid, image_count, output_dir, sequence)
+                    vid, image_count, output_dir, sequence)
                 last_time_saved = time.time()
                 image_count += 1
                 with open(f"{output_dir}/image_saved.csv", "a") as log_file:
@@ -502,6 +518,8 @@ def main_mission_1_post_processing(sqeuence, colorProfile, min_area):
     second CSV files with the GPS object coordinates is created.
     """
 
+    mission_id = 1
+
     # Read the CSV file with telemetry data
     for i in range(sqeuence):
         with open(f"/media/aviator/INTENSO/BildsequenzTest_{i}/image_saved.csv", "r") as log_file:
@@ -521,11 +539,21 @@ def main_mission_1_post_processing(sqeuence, colorProfile, min_area):
             detectedObject = False
 
             # Locate the object and save locations in CSV file
-            _, _, frame = locate_object_and_save(
-                output_dir, image_filename, 1,
-                colorProfile, hsv, frame,
-                min_area, detectedObject, pitch, roll, altitude,
-                heading, lat_position, long_position
+            frame, _, _ = locate_object_and_save(
+                output_dir,
+                image_filename,
+                mission_id,
+                colorProfile,
+                hsv,
+                frame,
+                min_area,
+                detectedObject,
+                pitch,
+                roll,
+                altitude,
+                heading,
+                lat_position,
+                long_position
             )
 
             # Save the processed image
@@ -551,10 +579,17 @@ async def main_mission_1(drone, vid):
     while True:
 
         # Telemetry data that will come from the flight controller
-        health, altitude, heading, (lat_position, long_position), pitch, roll, velocity = await communicator.get_data_for_image_processing(drone)
+        latitude, longitude, altitude, roll, pitch, yaw, status, scalar_velocity, key = await cm.get_parameters_for_image_processing(drone)
+
+        if key == 1:
+            for i in range(10):
+                print("COMMUNICATION LOST!")
+                asyncio.sleep(0.5)
+            
+            break
 
         # Check if new directory has to be created
-        if velocity < 5:
+        if scalar_velocity < 5:
 
             if new_dir == True:
                 output_dir = create_directory(sequence)
@@ -566,21 +601,65 @@ async def main_mission_1(drone, vid):
             # neccesary telemetry data
             if time.time() - last_time_saved >= save_delay:
                 image_filename = save_image(
-                    vid, image_count, output_dir, sequence)
+                    vid, 
+                    image_count, 
+                    output_dir, 
+                    sequence)
 
                 last_time_saved = time.time()
                 image_count += 1
 
                 with open(f"{output_dir}/image_saved.csv", "a") as log_file:
                     log_file.write(
-                        f"{output_dir}, {image_filename}, {pitch}, {roll}, {altitude}, {heading}, {lat_position}, {long_position}\n")
+                        f"{output_dir}, {image_filename}, {pitch}, {roll}, {altitude}, {yaw}, {latitude}, {longitude}\n")
                 print("Captured frame...")
 
-            else:
-                new_dir = True
+        else:
+            new_dir = True
 
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
-    cv2.destroyAllWindows()
+
     vid.stop()
     return sequence
+
+
+async def main_mission_2(drone, vid):
+
+    min_area = 900
+    colorProfile = 4
+    detectedObject = False
+    mission_id = 2
+
+    while True:
+
+        latitude, longitude, altitude, roll, pitch, yaw, status, scalar_velocity, key = await cm.get_parameters_for_image_processing(drone)
+
+        if key == 1:
+            print("COMMUNICATION LOST!")
+            break
+
+        hsv, frame = capture_and_convert(vid)
+
+        _, delta_lat, delta_lon = locate_object_and_save(
+            None,
+            None,
+            mission_id,
+            colorProfile,
+            hsv,
+            frame,
+            min_area,
+            detectedObject,
+            pitch,
+            roll,
+            altitude,
+            yaw,
+            latitude,
+            longitude
+
+        )
+
+        if delta_lat or delta_lon == None:
+            print("No object found!")
+
+        return delta_lat, delta_lon
