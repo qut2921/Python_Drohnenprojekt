@@ -1,5 +1,5 @@
-import modules.controller_functions as cl 
-import modules.image_processing as image_processing
+import control.controller_functions as cl 
+import utils.image_processing as image_processing
 import asyncio
 import math
 from mavsdk import system

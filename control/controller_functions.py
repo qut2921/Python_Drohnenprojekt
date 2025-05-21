@@ -10,7 +10,7 @@ from mavsdk import System
 from mavsdk.offboard import VelocityNedYaw
 from mavsdk.offboard import PositionNedYaw
 import math
-import modules.error_message as em
+import control.error_message as em
 
 
 async def connect_drone() -> System:
@@ -25,9 +25,9 @@ async def connect_drone() -> System:
     print("🔄 Connecting to drone...")
     try:
         # Connect to the drone to SITL
-        #await drone.connect(system_address="udp://:14540")
+        await drone.connect(system_address="udp://:14540")
         # Connect to the drone to real hardware
-        await drone.connect(system_address="serial:///dev/ttyAMA0:57600")
+        #await drone.connect(system_address="serial:///dev/ttyAMA0:57600")
     except Exception as e:
         print(f"❌ Error connecting to drone: {e}")
         return
@@ -75,7 +75,7 @@ async def default_takeoff(drone: System, target_altitude: float = 10.0):
         - Waits until target altitude (±0.5m) is reached
     """
 
-    await drone.param.set_param_float("MPC_TKO_SPEED", 2.0) # 2 m/s
+    #await drone.param.set_param_float("MPC_TKO_SPEED", 2.0) # 2 m/s
     await drone.action.set_takeoff_altitude(target_altitude)
 
     print("Start Mission")
@@ -250,6 +250,7 @@ def pid_update(error, dt, state, kp, ki, kd, max_output=1.0):
     state["prev_error"] = error
     return max(-max_output, min(max_output, output)), state
 
+
 async def precision_land_velocity_pid_method(drone, image_processing):
     """
     Precision Landing via velocity control using PID implemented as function.
@@ -310,7 +311,6 @@ async def precision_land_velocity_pid_method(drone, image_processing):
         await asyncio.sleep(dt)
 
 
-
 def offset_coordinates(lat: float, lon: float, 
                        north_m: float, east_m: float)-> tuple:
     """
@@ -327,8 +327,8 @@ async def fly_spiral_search(
     center_lat = 48.7647846,
     center_lon = 16.5487951,
     target_altitude = 15.0,
-    max_radius = 2.5,
-    radius_step = 0.5,
+    max_radius = 10,
+    radius_step = 2,
     points_per_circle = 8
 ) -> bool:
     """
@@ -352,12 +352,8 @@ async def fly_spiral_search(
             wp_lat, wp_lon = offset_coordinates(center_lat, center_lon, offset_north, offset_east)
 
             print(f"📍 spiral point (r={radius:.1f} m, θ={math.degrees(angle):.1f}°) → ({wp_lat:.7f}, {wp_lon:.7f})")
-            await drone.action.goto_location(wp_lat, wp_lon, target_altitude, 0)
+            await goto_location(drone, wp_lat, wp_lon, target_altitude)
             await asyncio.sleep(5)  # Wartezeit für Kamera
-
-            if await check_camera_for_target():
-                print("🎯 target detected during spiral flight.")
-                return True
 
             angle += angle_step
 

@@ -12,7 +12,7 @@ import numpy as np  # type:ignore
 from picamera2 import Picamera2, Preview
 from picamera2.controls import Controls
 import asyncio
-import modules.communicator as cm
+import control.communicator as cm
 
 
 def set_colorProfiles(n):
