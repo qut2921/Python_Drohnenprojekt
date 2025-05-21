@@ -161,7 +161,7 @@ async def get_parameters_for_image_processing(drone):
     pitch = euler.pitch_deg
     yaw = euler.yaw_deg
     scalar_velocity = np.sqrt(
-        np.power(velocity.north_ms, 2)+np.power(velocity.east_ms, 2))
+        np.power(velocity.north_m_s, 2)+np.power(velocity.east_m_s, 2))
     key = 0
 
     return latitude, longitude, altitude, roll, pitch, yaw, status, scalar_velocity, key
