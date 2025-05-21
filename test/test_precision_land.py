@@ -8,7 +8,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 import asyncio
 from mavsdk import System
 from mavsdk.offboard import PositionNedYaw
-import modules.controller_functions as cl
+import control.controller_functions as cl
 import random
 
 class DummyImageProcessing:

@@ -1,8 +1,8 @@
 import asyncio
 from mavsdk import System
 from mavsdk.offboard import (OffboardError, VelocityBodyYawspeed, PositionNedYaw)
-import modules.controller_functions as cl
-import modules.error_message as em
+import control.controller_functions as cl
+import control.error_message as em
 
 async def monitor_flight_mode(drone):
     async for flight_mode in drone.telemetry.flight_mode():

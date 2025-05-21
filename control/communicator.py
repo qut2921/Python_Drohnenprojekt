@@ -7,7 +7,7 @@ If communication is lost, an exception will be raised after a timeout.
 import asyncio
 import mavsdk
 import numpy as np
-import modules.error_message as em
+import control.error_message as em
 
 
 async def get_battery_status(drone):

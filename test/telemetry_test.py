@@ -1,6 +1,6 @@
 import asyncio
 from mavsdk import System
-import modules.communicator as cm
+import control.communicator as cm
 
 
 async def run():

@@ -1,4 +1,4 @@
-import modules.controller_functions as cl  # type: ignore
+import control.controller_functions as cl  # type: ignore
 import asyncio
 import time
 import matplotlib.pyplot as plt
@@ -10,7 +10,7 @@ dt = 0.1
 steps = 500
 # PID-Regler-Test: Parameter explizit setzen
 state = {"integral": 0.0, "prev_error": 0.0}
-kp, ki, kd = 0.8, 0.1, 0.08  # Hier bewusst übertrieben
+kp, ki, kd = 0.8, 0.05, 0.1  # Hier bewusst übertrieben
 
 
 # Logs für Plot
