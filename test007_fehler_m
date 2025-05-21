@@ -1,0 +1,40 @@
+class Drone:
+    def __init__(self):
+        self.position = [0, 0, 0]  # x, y, z-Koordinaten
+        self.commands_log = []
+
+    def execute_command(self, command):
+        """Führt einen Befehl aus und speichert ihn im Log"""
+        self.commands_log.append(command)
+        if command == "UP":
+            self.position[2] += 1
+        elif command == "DOWN" and self.position[2] != 0 :
+            self.position[2] -= 1
+        elif command == "DOWN" and self.position[2] == 0 :
+            print(" Die Drohne ist schon an ihrer niedriegsten Stelle !!! ")
+        elif command == "LEFT":
+            self.position[1] -= 1
+        elif command == "RIGHT":
+            self.position[1] += 1
+        elif command == "FORWARD":
+            self.position[0] += 1
+        elif command == "BACKWARD":
+            self.position[0] -= 1
+
+    def verify_commands(self, commands):
+        """Überprüft, ob die Befehle korrekt ausgeführt wurden"""
+        return self.commands_log == commands
+
+# Beispiel-Test
+drone = Drone()
+commands = ["UP", "RIGHT" , "FORWARD", "LEFT", "DOWN"]
+for cmd in commands:
+    drone.execute_command(cmd) 
+
+# Überprüfung
+if drone.verify_commands(commands) == True :
+    print("Alle Befehle wurden korrekt ausgeführt!")
+else:
+    print("Einige Befehle wurden nicht korrekt ausgeführt.")
+
+
