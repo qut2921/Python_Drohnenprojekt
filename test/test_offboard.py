@@ -1,6 +1,7 @@
 import asyncio
 from mavsdk import System
 from mavsdk.offboard import (OffboardError, VelocityBodyYawspeed)
+import modules.error_message as em
 
 async def run():
     drone = System()
@@ -26,6 +27,12 @@ async def run():
         await drone.offboard.start()
         print("Offboard-Modus aktiviert")
     except OffboardError as error:
+        message = f"Offboard-Modus konnte nicht aktiviert werden: {error._result.result}"
+        print(message)
+        em.log(message)
+        message = "--> breche ab"
+        print(message)
+        em.log(message)
         print(f"Offboard-Modus konnte nicht aktiviert werden: {error._result.result}")
         print("--> breche ab")
         return

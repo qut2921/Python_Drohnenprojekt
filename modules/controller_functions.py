@@ -10,6 +10,7 @@ from mavsdk import System
 from mavsdk.offboard import VelocityNedYaw
 from mavsdk.offboard import PositionNedYaw
 import math
+import modules.error_message as em
 
 
 async def connect_drone() -> System:
@@ -50,7 +51,9 @@ async def arm_drone(drone: System):
     try:
         await drone.action.arm()
     except Exception as e:
-        print(f"❌ Error arming drone: {e}")
+        message = f"❌ Error arming drone: {e}"
+        print(message)
+        em.log(message)
         return
     print("✅ Drone armed")
 
@@ -81,7 +84,9 @@ async def default_takeoff(drone: System, target_altitude: float = 10.0):
     try:
         await drone.action.takeoff()
     except Exception as e:
-        print(f"❌ Error taking off: {e}")
+        message = f"❌ Error taking off: {e}"
+        print(message)
+        em.log(message)
         return
     print("🔄 Taking off...")
     # Waits until the drone reaches the target altitude
@@ -205,7 +210,9 @@ async def default_land_and_disarm(drone: System):
     try:
         await drone.action.land()
     except Exception as e:
-        print(f"❌ Error landing: {e}")
+        message = f"❌ Error landing: {e}"
+        print(message)
+        em.log(message)
         return
     print("\n🔄 Landing...")
     async for position in drone.telemetry.position():
@@ -222,7 +229,15 @@ async def default_land_and_disarm(drone: System):
         await drone.action.disarm()
         print("✅ Drone disarmed")
     except Exception as e:
-        print(f"❌ Failed to disarm: {e}")
+        message = f"❌ Failed to disarm: {e}"
+        print(message)
+        em.log(message)
+        message = "✅ Mission completed ✅"
+        print(message)
+        em.log(message)
+        message = "----------------------"
+        print(message)
+        em.log(message)
 
     print("✅ Mission completed ✅")
     print("----------------------")
@@ -260,7 +275,9 @@ async def precision_land_velocity_pid_method(drone, image_processing):
         await drone.offboard.start()
         print("🟢 Offboard mode started")
     except Exception as e:
-        print(f"❌ Failed to start offboard: {e}")
+        message = f"❌ Failed to start offboard: {e}"
+        print(message)
+        em.log(message)
         return
 
     while True:
@@ -297,7 +314,7 @@ async def precision_land_velocity_pid_method(drone, image_processing):
 def offset_coordinates(lat: float, lon: float, 
                        north_m: float, east_m: float)-> tuple:
     """
-    Berechnet neue GPS-Koordinaten basierend auf Nord-/Ost-Versatz (in Metern).
+    calculates new GPS coordinates based on north/east offset (in meters).
     """
     earth_radius = 6378137.0
     d_lat = north_m / earth_radius
@@ -315,10 +332,10 @@ async def fly_spiral_search(
     points_per_circle = 8
 ) -> bool:
     """
-    Führt eine enge Spiralsuche um einen GPS-Mittelpunkt aus.
-    Bricht ab, wenn die Kamera ein Ziel erkennt.
+    Performs a tight spiral search around a GPS center point
+    Stops if the camera detects a target.
     
-    :return: True wenn Ziel erkannt, sonst False
+    :return: True if a target is detected, otherwise False
     """
     radius = radius_step
     angle = 0.0
@@ -334,17 +351,17 @@ async def fly_spiral_search(
             # Konvertiere zu GPS
             wp_lat, wp_lon = offset_coordinates(center_lat, center_lon, offset_north, offset_east)
 
-            print(f"📍 Spiralpunkt (r={radius:.1f} m, θ={math.degrees(angle):.1f}°) → ({wp_lat:.7f}, {wp_lon:.7f})")
+            print(f"📍 spiral point (r={radius:.1f} m, θ={math.degrees(angle):.1f}°) → ({wp_lat:.7f}, {wp_lon:.7f})")
             await drone.action.goto_location(wp_lat, wp_lon, target_altitude, 0)
             await asyncio.sleep(5)  # Wartezeit für Kamera
 
             if await check_camera_for_target():
-                print("🎯 Ziel erkannt während Spiralflug.")
+                print("🎯 target detected during spiral flight.")
                 return True
 
             angle += angle_step
 
         radius += radius_step
 
-    print("❌ Kein Ziel in der engen Spirale gefunden.")
+    print("❌ no target found in the tight spiral.")
     return False
