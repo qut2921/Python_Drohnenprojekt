@@ -2,6 +2,7 @@ import asyncio
 from mavsdk import System
 from mavsdk.offboard import (OffboardError, VelocityBodyYawspeed, PositionNedYaw)
 import modules.controller_functions as cl
+import modules.error_message as em
 
 async def monitor_flight_mode(drone):
     async for flight_mode in drone.telemetry.flight_mode():
@@ -31,6 +32,13 @@ async def run():
         await drone.offboard.start()
         print("Offboard mode activated")
     except OffboardError as error:
+        message = f"Offboard mode could not be activated: {error._result.result}"
+        print(message)
+        em.log(message)
+        message = "--> aborting"
+        print(message)
+        em.log(message)
+
         print(f"Offboard mode could not be activated: {error._result.result}")
         print("--> aborting")
         return
@@ -42,6 +50,9 @@ async def run():
         await drone.action.hold()
         print("Hold mode activated")
     except Exception as error:
+        message = f"Hold mode could not be activated: {error}"
+        print(message)
+        em.log(message)
         print(f"Hold mode could not be activated: {error}")
         return
     await asyncio.sleep(2)
