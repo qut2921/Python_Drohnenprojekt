@@ -63,9 +63,9 @@ def set_camera_controls(vid):
     vid.set_controls({
         "AeEnable": False,              # Disable auto exposure
         # Set exposure time in microseconds (e.g., 10000 �s = 10ms)
-        "ExposureTime": 3125,
+        "ExposureTime": 650,
         # Set the analog gain (1.0 is default, usually between 1 and 16)
-        "AnalogueGain": 6.0
+        "AnalogueGain": 1.0
     })
 
 
