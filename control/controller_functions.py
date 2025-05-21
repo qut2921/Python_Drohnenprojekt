@@ -10,7 +10,7 @@ from mavsdk import System
 from mavsdk.offboard import VelocityNedYaw
 from mavsdk.offboard import PositionNedYaw
 import math
-import modules.error_message as em
+import control.error_message as em
 
 
 async def connect_drone() -> System:

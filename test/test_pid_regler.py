@@ -1,4 +1,4 @@
-import modules.controller_functions as cl  # type: ignore
+import control.controller_functions as cl  # type: ignore
 import asyncio
 import time
 import matplotlib.pyplot as plt

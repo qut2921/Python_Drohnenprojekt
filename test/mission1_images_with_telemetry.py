@@ -1,5 +1,5 @@
-import modules.image_processing_raspi as ip # type: ignore
-import modules.controller_functions as cl
+import utils.image_processing_raspi as ip # type: ignore
+import control.controller_functions as cl
 from mavsdk import System
 import asyncio
 
