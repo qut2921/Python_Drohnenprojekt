@@ -9,6 +9,7 @@ import asyncio
 from mavsdk import System
 from mavsdk.offboard import VelocityNedYaw
 from mavsdk.offboard import PositionNedYaw
+import math
 
 
 async def connect_drone() -> System:
@@ -290,3 +291,60 @@ async def precision_land_velocity_pid_method(drone, image_processing):
             break
 
         await asyncio.sleep(dt)
+
+
+
+def offset_coordinates(lat: float, lon: float, 
+                       north_m: float, east_m: float)-> tuple:
+    """
+    Berechnet neue GPS-Koordinaten basierend auf Nord-/Ost-Versatz (in Metern).
+    """
+    earth_radius = 6378137.0
+    d_lat = north_m / earth_radius
+    d_lon = east_m / (earth_radius * math.cos(math.pi * lat / 180.0))
+    return lat + (d_lat * 180.0 / math.pi), lon + (d_lon * 180.0 / math.pi)
+
+
+async def fly_spiral_search(
+    drone: System,
+    center_lat = 48.7647846,
+    center_lon = 16.5487951,
+    target_altitude = 15.0,
+    max_radius = 2.5,
+    radius_step = 0.5,
+    points_per_circle = 8
+) -> bool:
+    """
+    Führt eine enge Spiralsuche um einen GPS-Mittelpunkt aus.
+    Bricht ab, wenn die Kamera ein Ziel erkennt.
+    
+    :return: True wenn Ziel erkannt, sonst False
+    """
+    radius = radius_step
+    angle = 0.0
+
+    while radius <= max_radius:
+        angle_step = 2 * math.pi / points_per_circle
+
+        for _ in range(points_per_circle):
+            # Berechne Versatz in Metern
+            offset_north = radius * math.cos(angle)
+            offset_east = radius * math.sin(angle)
+
+            # Konvertiere zu GPS
+            wp_lat, wp_lon = offset_coordinates(center_lat, center_lon, offset_north, offset_east)
+
+            print(f"📍 Spiralpunkt (r={radius:.1f} m, θ={math.degrees(angle):.1f}°) → ({wp_lat:.7f}, {wp_lon:.7f})")
+            await drone.action.goto_location(wp_lat, wp_lon, target_altitude, 0)
+            await asyncio.sleep(5)  # Wartezeit für Kamera
+
+            if await check_camera_for_target():
+                print("🎯 Ziel erkannt während Spiralflug.")
+                return True
+
+            angle += angle_step
+
+        radius += radius_step
+
+    print("❌ Kein Ziel in der engen Spirale gefunden.")
+    return False
