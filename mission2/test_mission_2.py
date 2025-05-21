@@ -1,5 +1,8 @@
 import modules.controller_functions as cl 
+import modules.image_processing as image_processing
 import asyncio
+import math
+from mavsdk import system
 
 async def mission_2():
     """
@@ -71,8 +74,23 @@ async def mission_2():
         await drone.action.hold()
 
     # 7. fly spiral search
+    # create offset coordinates 
+    await cl.offset_coordinates(lat=float, lon=float, north_m=float,
+                                 east_m=float)
 
+    #spiral
+    center_lat = 48.7647846 #richtige koordinate eingeben
+    center_lon = 16.5487951 #richtige koordinate eingeben
+    target_altitude = 15.0
+    max_radius = 2.5
+    radius_step = 0.5
+    points_per_circle = 8
+    await cl.fly_spiral_search(drone, center_lat, center_lon, 
+                               target_altitude, max_radius,
+                                radius_step, points_per_circle)
 
-    # 8. precision land
     
+    
+    # 8. precision land
+    await cl.precision_land_velocity_pid_method(drone, image_processing)
 
