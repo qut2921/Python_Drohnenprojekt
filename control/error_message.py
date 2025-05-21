@@ -2,6 +2,7 @@ import asyncio
 from mavsdk import System
 from mavsdk.telemetry import Position, Health
 from datetime import datetime
+import modules.controller_functions as cl
 
 
 class MavsdkErrorLogger:
@@ -53,7 +54,7 @@ class MavsdkErrorLogger:
 
 async def main():
     logger = MavsdkErrorLogger()
-    drone = await connect_drone()  # Nutzt deine eigene Funktion zum Verbinden
+    drone = await cl.connect_drone()  # Nutzt deine eigene Funktion zum Verbinden
 
     await asyncio.gather(
         logger.monitor(drone),
