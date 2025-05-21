@@ -2,7 +2,7 @@ import cv2
 import numpy as np
 
 
-image_file = "BildsequenzTest_0/frame_0_11.jpg"
+image_file = "BildsequenzTest_0/frame_0_9.jpg"
 
 
 def nothing(x):
