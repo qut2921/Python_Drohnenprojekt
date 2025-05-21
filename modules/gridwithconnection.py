@@ -1,58 +1,41 @@
 import asyncio
-import numpy as np
-import shapely.geometry as geom
 import json
-import os
-from mavsdk import System
-from mavsdk.offboard import OffboardError, PositionNedYaw
 import logging
-import pandas as pd
+import os
+import numpy as np
+#import pandas as pd
+from mavsdk import System
+from mavsdk.offboard import PositionNedYaw, OffboardError
+from shapely import geometry as geom
+
+
 logging.basicConfig(level=logging.INFO)
 
 # Funktion zum Einlesen der Plan-Datei
-# und Extrahieren der Polygon-Koordinaten
-# test
-
-
 def get_edgesfromplan(plath):
     if not os.path.exists(plath):
         logging.info(f"Fehler: Datei {plath} wurde nicht gefunden.")
         exit(1)
     with open(plath, 'r') as file:
         json_data = json.load(file)
-    edges = json_data['geoFence']["polygons"][0]["polygon"]
-    logging.info(f"Edges: {edges}")
+    raw_edges = json_data['geoFence']['polygons'][0]['polygon']
+    edges = [{"latitude": p[1], "longitude": p[0]} for p in raw_edges]
+    logging.info(f"Edges aus Plan-Datei: {edges}")
     return edges
 
-
-# Funktion zum Einlesen der Excel-Datei alternative
-def get_edges_from_excel(path):
-    if not os.path.exists(path):
-        logging.info(f"Fehler: Datei {path} wurde nicht gefunden.")
-        exit(1)
-    try:
-        df = pd.read_excel(path)
-        if 'lat' not in df.columns or 'lon' not in df.columns:
-            logging.info(
-                "Fehler: Spalten 'lat' und 'lon' wurden nicht gefunden."
-            )
-            exit(1)
-        # Erstelle eine Liste von Dictionaries, wie sie MAVSDK oder GeoFence
-        # ggf. erwartet:
-        edges = [{"latitude": row['lat'], "longitude": row['lon']} for _, row
-                 in df.iterrows()]
-        logging.info(f"Edges: {edges}")
-        return edges
-
-    except Exception as e:
-        logging.info(f"Fehler beim Lesen der Excel-Datei: {e}")
-        exit(1)
-
+# Manuelle Eingabe der Punkte
+def get_edges_manual():
+    edges = [
+        {"latitude": 48.7683120, "longitude": 11.3358300},
+        {"latitude": 48.7682250, "longitude": 11.3357260},
+        {"latitude": 48.7675320, "longitude": 11.3371370},
+        {"latitude": 48.7676310, "longitude": 11.3372290}
+    ]
+    logging.info(f"Manuelle Edges: {edges}")
+    return edges
 
 # Rasterpunkte erzeugen
-
-def generate_cell_center_points(polygon: geom.Polygon, spacing=0.0002,
-                                padding=0.00005):
+def generate_cell_center_points(polygon: geom.Polygon, spacing=0.0001, padding=0.00005):
     minx, miny, maxx, maxy = polygon.bounds
     minx -= padding
     miny -= padding
@@ -76,9 +59,7 @@ def generate_cell_center_points(polygon: geom.Polygon, spacing=0.0002,
         center_points.extend(column)
     return center_points
 
-# LLA → NED Umrechnung
-
-
+# LLA zu NED Umrechnung
 def geodetic_to_ned(lat, lon, alt, ref_lat, ref_lon, ref_alt=0):
     earth_radius = 6378137.0
     d_lat = lat - ref_lat
@@ -87,7 +68,6 @@ def geodetic_to_ned(lat, lon, alt, ref_lat, ref_lon, ref_alt=0):
     east = d_lon * (np.pi / 180) * earth_radius * np.cos(np.radians(ref_lat))
     down = ref_alt - alt
     return north, east, down
-
 
 # Offboard-Flugfunktion
 async def fly_path(drone, path_coords, reference_point):
@@ -103,28 +83,26 @@ async def fly_path(drone, path_coords, reference_point):
         return
 
     logging.info("-- Starting mission")
-    for lat, lon in path_coords:
-        north, east, down = geodetic_to_ned(lat, lon, 0, reference_point[1],
-                                            reference_point[0])
-        logging.info(
-            f"Flying to NED: N={north:.1f}, E={east:.1f}, D={down:.1f}"
-        )
-        await drone.offboard.set_position_ned(PositionNedYaw(north, east, -5.0,
-                                                             0.0))
+    for lon, lat in path_coords:
+        north, east, down = geodetic_to_ned(lat, lon, 0, reference_point[1], reference_point[0])
+        logging.info(f"Flying to NED: N={north:.1f}, E={east:.1f}, D={down:.1f}")
+        await drone.offboard.set_position_ned(PositionNedYaw(north, east, -5.0, 0.0))
         await asyncio.sleep(5)
 
     logging.info("-- Landing")
     await drone.action.land()
 
 # Hauptprogramm
+async def main(path, use_manual=False):
+    if use_manual:
+        polygon_coords = get_edges_manual()
+    else:
+        polygon_coords = get_edgesfromplan(path)
 
+    polygon = geom.Polygon([
+        (point["longitude"], point["latitude"]) for point in polygon_coords
+    ])
 
-async def main(path):
-    # Polygon aus Plan-Datei laden
-    polygon_coords = get_edgesfromplan(path)
-    polygon = geom.Polygon(polygon_coords)
-
-    # Rasterpunkte berechnen
     path_coords = generate_cell_center_points(polygon)
     if not path_coords:
         logging.info("Keine gültigen Rasterpunkte gefunden.")
@@ -132,12 +110,10 @@ async def main(path):
 
     start_point = path_coords[0]
 
-    # Verbindung zur Drohne aufbauen
     drone = System()
     logging.info("Connecting to drone on udp://:14540 ...")
     await drone.connect(system_address="udp://:14540")
 
-    # Warten auf Verbindung
     logging.info("Warte auf Verbindung...")
     try:
         async def wait_for_connection(drone):
@@ -148,12 +124,9 @@ async def main(path):
 
         await asyncio.wait_for(wait_for_connection(drone), timeout=20)
     except asyncio.TimeoutError:
-        logging.info(
-            "Fehler: Verbindung zur Drohne konnte nicht hergestellt werden."
-        )
+        logging.info("Fehler: Verbindung zur Drohne konnte nicht hergestellt werden.")
         return
 
-    # Warten auf GPS-Fix
     logging.info("Warte auf GPS-Fix...")
     try:
         async def wait_for_gps(drone):
@@ -167,10 +140,9 @@ async def main(path):
         logging.info("Fehler: GPS-Fix konnte nicht erreicht werden.")
         return
 
-    # Starte Flug entlang des berechneten Pfades
     await fly_path(drone, path_coords, start_point)
 
-# Start
 if __name__ == "__main__":
     path = r"TestPolygon.plan"
-    asyncio.run(main(path))
+    use_manual = True  # True: manuelle Punkte, False: Plan-Datei verwenden
+    asyncio.run(main(path, use_manual))

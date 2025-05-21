@@ -7,6 +7,7 @@ If communication is lost, an exception will be raised after a timeout.
 import asyncio
 import mavsdk
 import numpy as np
+import modules.error_message as em
 
 
 async def get_battery_status(drone):
@@ -15,7 +16,9 @@ async def get_battery_status(drone):
         return battery
 
     except asyncio.TimeoutError:
-        print("Timed out waiting for in battery info data.")
+        message = "Timed out waiting for in battery info data."
+        print(message)
+        em.log(message)
         battery = None
         return battery
 
@@ -26,7 +29,9 @@ async def get_gps_info(drone):
         return gps_info
 
     except asyncio.TimeoutError:
-        print("Timed out waiting for in gps info data.")
+        message = "Timed out waiting for in gps info data."
+        print(message)
+        em.log(message)
         gps_info = None
         return gps_info
 
@@ -37,7 +42,9 @@ async def get_in_air(drone):
         return in_air
 
     except asyncio.TimeoutError:
-        print("Timed out waiting for in air data.")
+        message = "Timed out waiting for in air data."
+        print(message)
+        em.log(message)
         in_air = None
         return in_air
 
@@ -48,7 +55,9 @@ async def get_position(drone):
         return position
 
     except asyncio.TimeoutError:
-        print("Timed out waiting for position data.")
+        message = "Timed out waiting for position data."
+        print(message)
+        em.log(message)
         position = None
         return position
 
@@ -59,7 +68,9 @@ async def get_heading(drone):
         return heading
 
     except asyncio.TimeoutError:
-        print("Timed out waiting for heading data.")
+        message = "Timed out waiting for heading data."
+        print(message)
+        em.log(message)
         heading = None
         return heading
 
@@ -70,7 +81,9 @@ async def get_altitude(drone):
         return altitude
 
     except asyncio.TimeoutError:
-        print("Timed out waiting for altitude data.")
+        message = "Timed out waiting for altitude data."
+        print(message)
+        em.log(message)
         altitude = None
         return altitude
 
@@ -82,7 +95,9 @@ async def get_euler(drone):
         return euler
 
     except asyncio.TimeoutError:
-        print("Timed out waiting for euler data.")
+        message = "Timed out waiting for euler data."
+        print(message)
+        em.log(message)
         euler = None
         return euler
 
@@ -94,7 +109,9 @@ async def get_velocity(drone):
         return velocity
 
     except asyncio.TimeoutError:
-        print("Timed out waiting for velocity data.")
+        message = "Timed out waiting for velocity data."
+        print(message)
+        em.log(message)
         velocity = None
         return velocity
 
@@ -105,7 +122,9 @@ async def monitor_communication(drone):
         return state
 
     except asyncio.TimeoutError:
-        print("Timed out waiting for status data.")
+        message = "Timed out waiting for status data."
+        print(message)
+        em.log(message)
         state = None
         return state
 
