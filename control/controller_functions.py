@@ -2,15 +2,14 @@
 Comands to controle the mission with repeating modules
 
 """
-
-print(__file__)
-
 import asyncio
 from mavsdk import System
 from mavsdk.offboard import VelocityNedYaw
 from mavsdk.offboard import PositionNedYaw
 import math
 import control.error_message as em
+import json
+import os
 
 
 async def connect_drone() -> System:
@@ -210,10 +209,9 @@ async def default_land_and_disarm(drone: System):
     try:
         await drone.action.land()
     except Exception as e:
-        message = f"❌ Error landing: {e}"
-        print(message)
-        em.log(message)
+        print(f"❌ Error landing: {e}")
         return
+
     print("\n🔄 Landing...")
     async for position in drone.telemetry.position():
         current_height = position.relative_altitude_m
@@ -221,23 +219,14 @@ async def default_land_and_disarm(drone: System):
         if abs(current_height) < 0.1:
             print("\n✅ Landed")
             break
-    
-    # Disarm the drone after landing
-    await asyncio.sleep(2)
+
+    await asyncio.sleep(5)
     print("\n🔄 Disarming...")
     try:
         await drone.action.disarm()
         print("✅ Drone disarmed")
     except Exception as e:
-        message = f"❌ Failed to disarm: {e}"
-        print(message)
-        em.log(message)
-        message = "✅ Mission completed ✅"
-        print(message)
-        em.log(message)
-        message = "----------------------"
-        print(message)
-        em.log(message)
+        print(f"❌ Failed to disarm: {e}")
 
     print("✅ Mission completed ✅")
     print("----------------------")
@@ -251,14 +240,14 @@ def pid_update(error, dt, state, kp, ki, kd, max_output=1.0):
     return max(-max_output, min(max_output, output)), state
 
 
-async def precision_land_velocity_pid_method(drone, image_processing):
+async def precision_land_velocity_pid_method(drone, vid):
     """
     Precision Landing via velocity control using PID implemented as function.
     Landing occurs when height < 0.5 m, regardless of position error.
     """
 
     # Reglerparameter
-    pid_params = {"kp": 0.8, "ki": 0.1, "kd": 0.08}
+    pid_params = {"kp": 0.8, "ki": 0.05, "kd": 0.1}
     max_speed = 1.0
     descent_speed = 0.3  # m/s
     landing_threshold = 0.5  # m
@@ -283,7 +272,7 @@ async def precision_land_velocity_pid_method(drone, image_processing):
 
     while True:
         # 1. Bildverarbeitung liefert Abweichung in m
-        delta_north, delta_east = image_processing.get_target_offset()
+        delta_north, delta_east = await main_mission_2(drone, vid)
 
         # 2. PID-Regelung
         v_north, state_north = pid_update(delta_north, dt, state_north, **pid_params, max_output=max_speed)
@@ -361,3 +350,21 @@ async def fly_spiral_search(
 
     print("❌ no target found in the tight spiral.")
     return False
+
+STATE_FILE = "mission1_state.json"
+def save_progress(index):
+    with open(STATE_FILE, "w") as f:
+        json.dump({"last_index": index}, f)
+
+
+def load_progress():
+    if os.path.exists(STATE_FILE):
+        with open(STATE_FILE, "r") as f:
+            data = json.load(f)
+            return data.get("last_index", 0)
+    return 0
+
+
+def reset_progress():
+    if os.path.exists(STATE_FILE):
+        os.remove(STATE_FILE)
