@@ -3,7 +3,6 @@ import json
 import logging
 import os
 import numpy as np
-import pandas as pd
 from mavsdk import System
 from mavsdk.offboard import PositionNedYaw, OffboardError
 from shapely import geometry as geom
@@ -33,17 +32,17 @@ def get_edges_manual():
     logging.info(f"Manuelle Edges: {edges}")
     return edges
 
-def get_edges_from_excel(filepath, sheetname='Sheet1'):
-    if not os.path.exists(filepath):
-        logging.info(f"Fehler: Excel-Datei {filepath} wurde nicht gefunden.")
-        exit(1)
-    df = pd.read_excel(filepath, sheet_name=sheetname)
-    if 'latitude' not in df.columns or 'longitude' not in df.columns:
-        logging.info("Excel-Datei muss Spalten 'latitude' und 'longitude' enthalten.")
-        exit(1)
-    edges = df[['latitude', 'longitude']].to_dict(orient='records')
-    logging.info(f"Edges aus Excel-Datei: {edges}")
-    return edges
+# def get_edges_from_excel(filepath, sheetname='Sheet1'):
+#     if not os.path.exists(filepath):
+#         logging.info(f"Fehler: Excel-Datei {filepath} wurde nicht gefunden.")
+#         exit(1)
+#     df = pd.read_excel(filepath, sheet_name=sheetname)
+#     if 'latitude' not in df.columns or 'longitude' not in df.columns:
+#         logging.info("Excel-Datei muss Spalten 'latitude' und 'longitude' enthalten.")
+#         exit(1)
+#     edges = df[['latitude', 'longitude']].to_dict(orient='records')
+#     logging.info(f"Edges aus Excel-Datei: {edges}")
+#     return edges
 
 # --- Rasterpunkte erzeugen --------------------------------------------
 
@@ -97,10 +96,13 @@ async def fly_path(drone, path_coords, reference_point):
     logging.info("-- Starting mission")
     for lon, lat in path_coords:
         north, east, down = geodetic_to_ned(lat, lon, 0, reference_point[1], reference_point[0])
+        
+        logging.info(f"Flying to GPS: lat={lat:.7f}, lon={lon:.7f}")
+    # Vorhandene NED-Ausgabe (wie gehabt)
         logging.info(f"Flying to NED: N={north:.1f}, E={east:.1f}, D={down:.1f}")
+
         await drone.offboard.set_position_ned(PositionNedYaw(north, east, -5.0, 0.0))
         await asyncio.sleep(5)
-
     logging.info("-- Landing")
     await drone.action.land()
 
@@ -111,10 +113,8 @@ async def main(input_mode, path=None, excel_path=None):
         polygon_coords = get_edges_manual()
     elif input_mode == "plan":
         polygon_coords = get_edgesfromplan(path)
-    elif input_mode == "excel":
-        polygon_coords = get_edges_from_excel(excel_path)
     else:
-        logging.info("Ungültiger input_mode. Wähle 'manual', 'plan' oder 'excel'.")
+        logging.info("Ungültiger input_mode. Wähle 'manual' oder 'plan'.")
         return
 
     polygon = geom.Polygon([
@@ -125,6 +125,9 @@ async def main(input_mode, path=None, excel_path=None):
     if not path_coords:
         logging.info("Keine gültigen Rasterpunkte gefunden.")
         return
+    logging.info("Generierte Raster-Wegpunkte (lat, lon):")
+    for lon, lat in path_coords:
+        logging.info(f"{lat:.7f}, {lon:.7f}")
 
     start_point = path_coords[0]
 
@@ -142,8 +145,7 @@ async def main(input_mode, path=None, excel_path=None):
 
         await asyncio.wait_for(wait_for_connection(drone), timeout=20)
     except asyncio.TimeoutError:
-        logging.info("Fehler: Verbindung zur Drohne konnte nicht hergestellt
-                     werden.")
+        logging.info("Fehler: Verbindung zur Drohne konnte nicht hergestellt werden.")
         return
 
     logging.info("Warte auf GPS-Fix...")
@@ -164,7 +166,6 @@ async def main(input_mode, path=None, excel_path=None):
 # --- Startkonfiguration -----------------------------------------------
 
 if __name__ == "__main__":
-    mode = "excel"  # Optionen: "manual", "plan", "excel"
+    mode = "manual"  # Optionen: "manual", "plan"
     plan_path = r"TestPolygon.plan"
-    excel_path = r"punkte.xlsx"
-    asyncio.run(main(input_mode=mode, path=plan_path, excel_path=excel_path))
+    asyncio.run(main(input_mode=mode, path=plan_path))
