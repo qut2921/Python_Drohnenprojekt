@@ -74,23 +74,22 @@ async def mission_2():
         await drone.action.hold()
 
     # 7. fly spiral search
-    # create offset coordinates 
-    await cl.offset_coordinates(lat=float, lon=float, north_m=float,
-                                 east_m=float)
+    while True:
+        # Get the center location for the spiral search
+        center_location = await drone.telemetry.position().__anext__()
+        center_lat = center_location.latitude_deg
+        center_lon = center_location.longitude_deg
+        print(f"Spiral search center: {center_lat}, {center_lon}")
 
-    #spiral
-    center_lat = 48.7647846 #richtige koordinate eingeben
-    center_lon = 16.5487951 #richtige koordinate eingeben
-    target_altitude = 15.0
-    max_radius = 2.5
-    radius_step = 0.5
-    points_per_circle = 8
-    await cl.fly_spiral_search(drone, center_lat, center_lon, 
-                               target_altitude, max_radius,
-                                radius_step, points_per_circle)
+        # Define the parameters for the spiral search
+        await cl.fly_spiral_search(drone, center_lat, center_lon)
+
+        if main_mission_1 := null:
+            print("❌ Spiral search aborted by user.")
+            break
 
     
     
     # 8. precision land
-    await cl.precision_land_velocity_pid_method(drone, image_processing)
+    await cl.precision_land_velocity_pid_method(drone, vid)
 

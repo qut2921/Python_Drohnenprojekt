@@ -243,21 +243,21 @@ def pid_update(error, dt, state, kp, ki, kd, max_output=1.0):
 async def precision_land_velocity_pid_method(drone, vid):
     """
     Precision Landing via velocity control using PID implemented as function.
-    Landing occurs when height < 0.5 m, regardless of position error.
+    Landing occurs when height < 0.5 m.
     """
 
-    # Reglerparameter
-    pid_params = {"kp": 0.8, "ki": 0.05, "kd": 0.1}
-    max_speed = 1.0
+    pid_params = {"kp": 0.8, "ki": 0.05, "kd": 0.1} # PID parameters
+    max_speed = 1.0 # m/s – max speed
     descent_speed = 0.3  # m/s
     landing_threshold = 0.5  # m
-    dt = 0.1  # 100 ms
+    alignment_threshold = 0.2  # m threshold for alignment
+    dt = 0.1 # time step in seconds
 
-    # PID-Zustände
+    # Initialize PID states for north and east directions
     state_north = {"integral": 0.0, "prev_error": 0.0}
     state_east  = {"integral": 0.0, "prev_error": 0.0}
 
-    # Dummy-Setpoint zum Aktivieren von Offboard
+    # 0. Start Offboard mode
     await drone.offboard.set_velocity_ned(VelocityNedYaw(0, 0, 0, 0))
     await asyncio.sleep(0.1)
 
@@ -265,33 +265,56 @@ async def precision_land_velocity_pid_method(drone, vid):
         await drone.offboard.start()
         print("🟢 Offboard mode started")
     except Exception as e:
-        message = f"❌ Failed to start offboard: {e}"
-        print(message)
-        em.log(message)
+        print(f"❌ Failed to start offboard: {e}")
         return
 
+    # 1. Horizontal alignment phase
     while True:
-        # 1. Bildverarbeitung liefert Abweichung in m
+        # Get the current position error in North and East directions
         delta_north, delta_east = await main_mission_2(drone, vid)
 
-        # 2. PID-Regelung
         v_north, state_north = pid_update(delta_north, dt, state_north, **pid_params, max_output=max_speed)
         v_east,  state_east  = pid_update(delta_east, dt, state_east, **pid_params, max_output=max_speed)
-        v_down = descent_speed
 
-        # 3. Steuerbefehl senden
+        # Set the velocity in NED coordinates (North, East, Down)
         await drone.offboard.set_velocity_ned(VelocityNedYaw(
-            north_m_s=-v_north,  # negative Richtung → Annäherung
+            north_m_s=-v_north,
             east_m_s=-v_east,
-            down_m_s=v_down,
+            down_m_s=0.0,  # no descent yet
             yaw_deg=0.0
         ))
 
-        # 4. Höhe prüfen
+        print(f"\r🟡 Aligning: vN={v_north:.2f}, vE={v_east:.2f} – ΔN={delta_north:.2f}, ΔE={delta_east:.2f}", end="")
+
+        # Check if the drone is aligned within the threshold
+        if abs(delta_north) < alignment_threshold and abs(delta_east) < alignment_threshold:
+            print("\n✅ Alignment complete. Starting descent.")
+            break
+
+        await asyncio.sleep(dt)
+
+    # 2. Precision Landing phase with descent
+    while True:
+        # Get the current position error in North and East directions
+        delta_north, delta_east = await main_mission_2(drone, vid)
+
+        v_north, state_north = pid_update(delta_north, dt, state_north, **pid_params, max_output=max_speed)
+        v_east,  state_east  = pid_update(delta_east, dt, state_east, **pid_params, max_output=max_speed)
+
+        # Set the velocity in NED coordinates (North, East, Down)
+        await drone.offboard.set_velocity_ned(VelocityNedYaw(
+            north_m_s=-v_north,
+            east_m_s=-v_east,
+            down_m_s=descent_speed,
+            yaw_deg=0.0
+        ))
+
+        # Get the current altitude
         position = await drone.telemetry.position().__anext__()
         current_alt = position.relative_altitude_m
-        print(f"\r✈️ vN: {v_north:.2f}, vE: {v_east:.2f}, Alt: {current_alt:.2f} m", end="")
+        print(f"\r✈️ vN={v_north:.2f}, vE={v_east:.2f}, Alt={current_alt:.2f} m", end="")
 
+        # Check if the drone is aligned within the landing threshold
         if current_alt < landing_threshold:
             print("\n✅ Altitude < 0.5 m → Landing")
             await drone.action.land()

@@ -84,12 +84,10 @@ async def mission_1():
     await cl.default_takeoff(drone, target_altitude)
     await asyncio.sleep(1)
 
-    """
     # 6. Start photo capture
     print("Starting photo capture...")
-    await module_main_mission_1(....)
-    print("Photo capture started.")
-    """
+    asyncio.create_task(cl.main_mission_1())
+
     
     # 7. Fly to each location
     start_index = cl.load_progress()
