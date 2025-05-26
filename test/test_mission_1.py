@@ -38,8 +38,6 @@ async def mission_1():
 
     mission_locations = grid.generate_cell_center_points(polygon)
 
-    mission_locations
-
     # 1. Connect to the drone
     drone = await cl.connect_drone()
 
@@ -72,6 +70,17 @@ async def mission_1():
     await cl.arm_drone(drone)
     await asyncio.sleep(1)
 
+    # Set mission locations
+    home = await drone.telemetry.home().__anext__()
+    home_lat = home.latitude_deg
+    home_long = home.longitude_deg
+    mission_locations = [
+        {48.76762, 11.33715},
+        {48.76774, 11.33689},
+        {48.76784, 11.33665},
+        {home_lat, home_long}
+    ]
+
     # 4. User confirmation before takeoff
     while True:
         user_input = input(
@@ -88,7 +97,7 @@ async def mission_1():
     vid = ip.start_videoCapture(1)
 
     # 5. Take off to 5 meters
-    target_altitude = 15
+    target_altitude = 5
     await cl.default_takeoff(drone, target_altitude)
     await asyncio.sleep(1)
 
@@ -102,8 +111,9 @@ async def mission_1():
 
     # 7. Fly to each location
     start_index = cl.load_progress()
-    target_altitude = 5.0  # Set target altitude for the mission
-    for i, (longitude, latitude) in enumerate(mission_locations, start=1):
+    target_altitude = 15.0  # Set target altitude for the mission
+    # lat und long muss bei Hanna umgedreht werden (longitude, latitude)
+    for i, (latitude, longitude) in enumerate(mission_locations, start=1):
         # Skip already visited locations
         if i <= start_index:
             print(f"\n⏭️ Skipping location {i} (already completed)")
@@ -117,7 +127,6 @@ async def mission_1():
                                latitude,
                                longitude,
                                target_altitude)
-        # Wait for 5 seconds at each location to take a photo
         await drone.action.hold()
         cl.save_progress(i)    # Save progress after each location
         if i < len(mission_locations):

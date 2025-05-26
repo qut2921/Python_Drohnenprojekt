@@ -282,6 +282,20 @@ async def precision_land_velocity_pid_method(drone, vid):
         # Get the current position error in North and East directions
         delta_north, delta_east = await ip.main_mission_2(drone, vid)
 
+        if delta_north is None or delta_east is None:
+            print("\n⚠️ No target detected. Stopping movement...")
+            
+            # Set all velocities to 0 (Hover in place)
+            await drone.offboard.set_velocity_ned(VelocityNedYaw(
+                north_m_s=0.0,
+                east_m_s=0.0,
+                down_m_s=0.0,
+                yaw_deg=0.0
+            ))
+            
+            await asyncio.sleep(dt)
+            continue
+
         v_north, state_north = pid_update(delta_north, dt, state_north, **pid_params, max_output=max_speed)
         v_east,  state_east  = pid_update(delta_east, dt, state_east, **pid_params, max_output=max_speed)
 
@@ -305,7 +319,21 @@ async def precision_land_velocity_pid_method(drone, vid):
     # 2. Precision Landing phase with descent
     while True:
         # Get the current position error in North and East directions
-        delta_north, delta_east = await main_mission_2(drone, vid)
+        delta_north, delta_east = await ip.main_mission_2(drone, vid)
+
+        if delta_north is None or delta_east is None:
+            print("\n⚠️ No target detected. Stopping movement...")
+            
+            # Set all velocities to 0 (Hover in place)
+            await drone.offboard.set_velocity_ned(VelocityNedYaw(
+                north_m_s=0.0,
+                east_m_s=0.0,
+                down_m_s=0.0,
+                yaw_deg=0.0
+            ))
+            
+            await asyncio.sleep(dt)
+            continue
 
         v_north, state_north = pid_update(delta_north, dt, state_north, **pid_params, max_output=max_speed)
         v_east,  state_east  = pid_update(delta_east, dt, state_east, **pid_params, max_output=max_speed)
