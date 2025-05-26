@@ -2,11 +2,11 @@ import asyncio
 from mavsdk import System
 from mavsdk.telemetry import Position, Health
 from datetime import datetime
-
+import control.controller_functions as cl 
 
 class MavsdkErrorLogger:
     def __init__(self):
-        self.log_file = "mavsdk_errors.log"
+        self.log_file = "/media/aviator/ITENSO/mavsdk_errors.log"
         self.home_position = None  # (lat, lon)
 
     def log(self, message):
@@ -15,7 +15,7 @@ class MavsdkErrorLogger:
             f.write(f"[{timestamp}] {message}\n")
         print(f"[{timestamp}] {message}")
 
-    async def monitor(self, drone):
+    async def monitor(self, drone: System):
         self.log("Logger gestartet. Warte auf Telemetrie...")
 
         # Warte auf gültiges GPS und Home-Position
@@ -53,7 +53,7 @@ class MavsdkErrorLogger:
 
 async def main():
     logger = MavsdkErrorLogger()
-    drone = await connect_drone()  # Nutzt deine eigene Funktion zum Verbinden
+    drone = await cl.connect_drone()  # Nutzt deine eigene Funktion zum Verbinden
 
     await asyncio.gather(
         logger.monitor(drone),
