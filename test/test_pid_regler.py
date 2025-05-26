@@ -1,3 +1,6 @@
+import sys
+import os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 import control.controller_functions as cl  # type: ignore
 import asyncio
 import time
