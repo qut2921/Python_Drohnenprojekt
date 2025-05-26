@@ -24,4 +24,7 @@ async def test_spirale():
     # 7  Fly in a spiral pattern
     await cl.fly_spiral_search(drone, latitude, longitude, 5)
 
+    # 8  Land and disarm
+    await cl.default_land(drone)
+
 asyncio.run(test_spirale())

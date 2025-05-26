@@ -52,8 +52,8 @@ def set_sensor_properties():
     frame_width = 1920  # Maximum is 4608
     frame_height = 1080  # Maximum 2592
 
-    # camera_config = {"size": (frame_width, frame_height), "format": "RGB888"}
-    camera_config = {"size": (frame_width, frame_height), "format": "YUV420"}
+    camera_config = {"size": (frame_width, frame_height), "format": "RGB888"}
+    # camera_config = {"size": (frame_width, frame_height), "format": "YUV420"}
 
     return camera_config
 
@@ -86,17 +86,20 @@ def start_videoCapture(mission_id):
     if mission_id == 1:
         config = vid.create_preview_configuration(main=set_sensor_properties())
         vid.configure(config)
-        vid.start_preview(Preview.QTGL)
+        #vid.start_preview(Preview.QTGL)
+        
 
     elif mission_id == 2 or mission_id == 3:
         config = vid.create_video_configuration(main=set_sensor_properties())
         vid.configure(config)
+        print
 
     else:
         raise ValueError("Invalid mission ID. Use 1, 2, or 3.")
 
     # Start camera with settings
     vid.start()
+    print("Camera started")
 
     if mission_id == 1:
         # Set camera controls for mission 1
@@ -196,7 +199,7 @@ def calculate_gps(
     lat_object = lat_position + delta_lat  # [degrees]
     lon_object = long_position + delta_lon  # [degrees]
 
-    return x_distance, y_distance, lat_object, lon_object, delta_lat, delta_lon
+    return x_distance, y_distance, lat_object, lon_object, n_ned, e_ned
 
 
 def remove_noise(mask):
@@ -286,6 +289,9 @@ def locate_object_and_save(
     contours, _ = cv2.findContours(
         mask.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
 
+    n_ned = None
+    e_ned = None
+
     if contours:
         for cnt in contours:
             area = cv2.contourArea(cnt)
@@ -295,7 +301,7 @@ def locate_object_and_save(
                 x, y, w, h = cv2.boundingRect(cnt)
 
                 # calculate GPS coordinates
-                x_distance, y_distance, lat_object, long_object, delta_lat, delta_lon = calculate_gps(
+                x_distance, y_distance, lat_object, long_object, n_ned, e_ned = calculate_gps(
                     x,
                     y,
                     w,
@@ -333,9 +339,10 @@ def locate_object_and_save(
             else:
                 # Reset flag if area is too small
                 detectedObject = False
+                
 
         
-    return frame, delta_lat, delta_lon
+    return frame, n_ned, e_ned
 
 
 
@@ -589,7 +596,7 @@ async def main_mission_1(drone, vid):
             break
 
         # Check if new directory has to be created
-        if scalar_velocity < 5:
+        if scalar_velocity < 1:
 
             if new_dir == True:
                 output_dir = create_directory(sequence)
@@ -631,35 +638,34 @@ async def main_mission_2(drone, vid):
     detectedObject = False
     mission_id = 2
 
-    while True:
 
-        latitude, longitude, altitude, roll, pitch, yaw, status, scalar_velocity, key = await cm.get_parameters_for_image_processing(drone)
+    latitude, longitude, altitude, roll, pitch, yaw, status, scalar_velocity, key = await cm.get_parameters_for_image_processing(drone)
 
-        if key == 1:
-            print("COMMUNICATION LOST!")
-            break
+    if key == 1:
+        print("COMMUNICATION LOST!")
+        return
 
-        hsv, frame = capture_and_convert(vid)
+    hsv, frame = capture_and_convert(vid)
 
-        _, delta_lat, delta_lon = locate_object_and_save(
-            None,
-            None,
-            mission_id,
-            colorProfile,
-            hsv,
-            frame,
-            min_area,
-            detectedObject,
-            pitch,
-            roll,
-            altitude,
-            yaw,
-            latitude,
-            longitude
+    _, n_ned, e_ned = locate_object_and_save(
+        None,
+        None,
+        mission_id,
+        colorProfile,
+        hsv,
+        frame,
+        min_area,
+        detectedObject,
+        pitch,
+        roll,
+        altitude,
+        yaw,
+        latitude,
+        longitude
 
         )
 
-        if delta_lat or delta_lon == None:
-            print("No object found!")
+    if n_ned or e_ned == None:
+        print("No object found!")
 
-        return delta_lat, delta_lon
+    return n_ned, e_ned

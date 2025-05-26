@@ -6,6 +6,7 @@ import asyncio
 from mavsdk import System
 from mavsdk.offboard import VelocityNedYaw
 from mavsdk.offboard import PositionNedYaw
+import utils.image_processing_raspi as ip
 import math
 import control.error_message as em
 import json
@@ -271,7 +272,7 @@ async def precision_land_velocity_pid_method(drone, vid):
     # 1. Horizontal alignment phase
     while True:
         # Get the current position error in North and East directions
-        delta_north, delta_east = await main_mission_2(drone, vid)
+        delta_north, delta_east = await ip.main_mission_2(drone, vid)
 
         v_north, state_north = pid_update(delta_north, dt, state_north, **pid_params, max_output=max_speed)
         v_east,  state_east  = pid_update(delta_east, dt, state_east, **pid_params, max_output=max_speed)
@@ -335,13 +336,10 @@ def offset_coordinates(lat: float, lon: float,
 
 
 async def fly_spiral_search(
-    drone: System,
-    center_lat = 48.7647846,
-    center_lon = 16.5487951,
-    target_altitude = 15.0,
-    max_radius = 10,
-    radius_step = 2,
-    points_per_circle = 8
+    drone,
+    center_lat,
+    center_lon,
+    vid
 ) -> bool:
     """
     Performs a tight spiral search around a GPS center point
@@ -349,6 +347,10 @@ async def fly_spiral_search(
     
     :return: True if a target is detected, otherwise False
     """
+    target_altitude = 15.0,
+    max_radius = 10,
+    radius_step = 2,
+    points_per_circle = 8
     radius = radius_step
     angle = 0.0
 
@@ -366,6 +368,11 @@ async def fly_spiral_search(
             print(f"📍 spiral point (r={radius:.1f} m, θ={math.degrees(angle):.1f}°) → ({wp_lat:.7f}, {wp_lon:.7f})")
             await goto_location(drone, wp_lat, wp_lon, target_altitude)
             await asyncio.sleep(5)  # Wartezeit für Kamera
+
+            # Chechk if the camera detects a target
+            n_ned, e_ned = await ip.main_mission_2(drone, vid)
+            if n_ned is not None or e_ned is not None:
+                return True  # Target found, exit the spiral search
 
             angle += angle_step
 
