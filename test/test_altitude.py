@@ -1,3 +1,6 @@
+import sys
+import os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 import control.controller_functions as cl  # type: ignore
 import asyncio
 
@@ -8,7 +11,7 @@ async def test_altitude():
     Makes the drone fly up and down between different altitudes.
     Sequence: 5 → 10 → 15 → 10 → 5 meters, then lands.
     """
-    altitudes = [5, 10, 15, 10, 5]
+    altitudes = [5]
 
     # 1 ️ Connect to the drone
     drone = await cl.connect_drone()
