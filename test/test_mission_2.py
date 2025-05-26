@@ -1,10 +1,8 @@
 import control.controller_functions as cl 
 import utils.image_processing as image_processing
-import utils.image_processing_raspi as image_processing_raspi
+import utils.image_processing_raspi as ip
 import asyncio
 import math
-import picamera2
-import picamera2.controls
 from mavsdk import system
 
 async def mission_2():
@@ -46,10 +44,10 @@ async def mission_2():
     await asyncio.sleep(1)
 
     # set location
-    home_location = await drone.telemetry.home().__anext__()
-    home_lat = home_location.latitude_deg
-    home_lon = home_location.longitude_deg
     mission_locations = [(48.76758, 11.33717)] # target location
+
+    # Start camera
+    vid = ip.start_videoCapture(2)
 
     #4. user confirmation before takeoff
     while True:
@@ -81,14 +79,33 @@ async def mission_2():
                                target_altitude)
         await drone.action.hold()
 
-    #7. check camera for target
-    await image_processing_raspi.main_mission_2()
-
-    #8. no target detected: fly spiral search 
+    #7. if no target detected: fly spiral search 
     position = await drone.telemetry.position().__anext__()
     center_lat = position.latitude_deg
     center_lon = position.longitude_deg
-    await cl.fly_spiral_search(drone, center_lat, center_lon)
 
+    n_ned, e_ned = await ip.main_mission_2(drone, vid)
+    if n_ned is None or e_ned is None:
+        bool = await cl.fly_spiral_search(drone, center_lat, center_lon, vid)
+
+    position = await drone.telemetry.position().__anext__()
+    center_lat = position.latitude_deg
+    center_lon = position.longitude_deg
+
+    n_ned, e_ned = await ip.main_mission_2(drone, vid)
+    if n_ned is None or e_ned is None:
+        bool = await cl.fly_spiral_search(drone, center_lat, center_lon, vid)
+
+    if bool == False:
+        #Return to land
+        position = await drone.telemetry.home().__anext__()
+        latitude = position.latitude_deg
+        longitude = position.longitude_deg
+        await cl.goto_location(drone,
+                               latitude,
+                               longitude,
+                               target_altitude)
+        await cl.default_land_and_disarm(drone)
+        
     #8a. precision land
     await cl.precision_land_velocity_pid_method(drone, image_processing)

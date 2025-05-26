@@ -2,7 +2,7 @@ import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 import control.controller_functions as cl  # type: ignore
-import utils.image_processing as image_processing  # type: ignore
+import utils.image_processing_raspi as ip  # type: ignore
 import gridwithconnection3 as grid
 from mavsdk.mission import MissionItem, MissionPlan
 from mavsdk.mission import Mission
@@ -37,6 +37,8 @@ async def mission_1():
         (point["longitude"], point["latitude"]) for point in polygon_coords])
 
     mission_locations = grid.generate_cell_center_points(polygon)
+
+    mission_locations
 
     # 1. Connect to the drone
     drone = await cl.connect_drone()
@@ -82,19 +84,25 @@ async def mission_1():
         else:
             print("⚠️ Please enter 'y' to start or 'n' to abort.")
 
+    # Start camera
+    vid = ip.start_videoCapture(1)
+
     # 5. Take off to 5 meters
-    target_altitude = 5.0
+    target_altitude = 15
     await cl.default_takeoff(drone, target_altitude)
     await asyncio.sleep(1)
 
     # 6. Start photo capture
-    # print("Starting photo capture...")
-    # asyncio.create_task(cl.main_mission_1())
+    print("\nStarting photo capture...")
+    try:
+        asyncio.create_task(ip.main_mission_1(drone, vid))
+    except Exception as e:
+        print(f"⚠️ Error starting photo capture: {e}")
+    print("Photo capture started.")
 
-    
     # 7. Fly to each location
     start_index = cl.load_progress()
-    target_altitude = 10.0
+    target_altitude = 5.0  # Set target altitude for the mission
     for i, (longitude, latitude) in enumerate(mission_locations, start=1):
         # Skip already visited locations
         if i <= start_index:
@@ -114,7 +122,7 @@ async def mission_1():
         cl.save_progress(i)    # Save progress after each location
         if i < len(mission_locations):
             # ⏳ Nur warten, wenn es NICHT der letzte Punkt ist
-            wait_time = 5
+            wait_time = 45
             for remaining in range(wait_time, 0, -1):
                 print(f"\r⏳ Waiting... {remaining} s ", end="")
                 await asyncio.sleep(1)
