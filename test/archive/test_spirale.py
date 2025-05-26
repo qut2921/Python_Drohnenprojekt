@@ -1,3 +1,6 @@
+import sys
+import os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
 import control.controller_functions as cl  # type: ignore
 import asyncio
 
@@ -25,6 +28,6 @@ async def test_spirale():
     await cl.fly_spiral_search(drone, latitude, longitude, 5)
 
     # 8  Land and disarm
-    await cl.default_land(drone)
+    await cl.default_land_and_disarm(drone)
 
 asyncio.run(test_spirale())
