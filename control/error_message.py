@@ -2,12 +2,6 @@ import asyncio
 from mavsdk import System
 from mavsdk.telemetry import Position, Health
 from datetime import datetime
-<<<<<<< HEAD
-import control.controller_functions as cl 
-=======
-import modules.controller_functions as cl
-
->>>>>>> 03abaa1b57781d1138462c36bd06a8fc765dcf18
 
 class MavsdkErrorLogger:
     def __init__(self):
