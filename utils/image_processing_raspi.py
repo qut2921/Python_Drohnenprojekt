@@ -44,6 +44,12 @@ def set_colorProfiles(n):
         hsv_lower = (0, 100, 100)
         hsv_upper = (12, 255, 255)
         return (name, hsv_lower, hsv_upper)
+    
+    if n == 4:
+        name = "Orange"
+        hsv_lower = (0, 100, 100)
+        hsv_upper = (12, 255, 255)
+        return (name, hsv_lower, hsv_upper)
 
 
 def set_sensor_properties():
@@ -63,7 +69,29 @@ def set_camera_controls(vid):
     vid.set_controls({
         "AeEnable": False,              # Disable auto exposure
         # Set exposure time in microseconds (e.g., 10000 �s = 10ms)
-        "ExposureTime": 650,
+        "ExposureTime": 500,
+        # Set the analog gain (1.0 is default, usually between 1 and 16)
+        "AnalogueGain": 1.0
+    })
+
+
+def set_camera_controls2(vid):
+
+    vid.set_controls({
+        "AeEnable": False,              # Disable auto exposure
+        # Set exposure time in microseconds (e.g., 10000 �s = 10ms)
+        "ExposureTime": 1000,
+        # Set the analog gain (1.0 is default, usually between 1 and 16)
+        "AnalogueGain": 1.0
+    })
+
+
+def set_camera_controls3(vid):
+
+    vid.set_controls({
+        "AeEnable": False,              # Disable auto exposure
+        # Set exposure time in microseconds (e.g., 10000 �s = 10ms)
+        "ExposureTime": 1500,
         # Set the analog gain (1.0 is default, usually between 1 and 16)
         "AnalogueGain": 1.0
     })
@@ -119,7 +147,7 @@ def capture_and_convert(vid):
     # Capture frame
     frame = vid.capture_array()
     # Convert frame to HSV color space
-    hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+    hsv = cv2.cvtColor(frame, cv2.COLOR_RGB2HSV)
     return hsv, frame
 
 
@@ -137,7 +165,7 @@ def read_image_and_convert(output_dir, image_name):
     frame = unsharp_masking(frame)
 
     # Convert frame to HSV color space
-    hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+    hsv = cv2.cvtColor(frame, cv2.COLOR_RGB2HSV)
     return hsv, frame
 
 
@@ -269,7 +297,7 @@ def draw_rectangle_with_text(
 
 
 def locate_object_and_save(
-        output_dir, image_filename, mission_id,
+        output_dir, image_filename,
         colorProfile, hsv,
         frame, min_area, detectedObject,
         pitch, roll, altitude, heading, lat_position, long_position):
@@ -289,8 +317,6 @@ def locate_object_and_save(
     contours, _ = cv2.findContours(
         mask.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
 
-    n_ned = None
-    e_ned = None
 
     if contours:
         for cnt in contours:
@@ -314,9 +340,9 @@ def locate_object_and_save(
                     long_position,
                     frame)
 
-                if mission_id == 1:
-                    # draw rectangle and text
-                    frame = draw_rectangle_with_text(
+                
+                # draw rectangle and text
+                frame = draw_rectangle_with_text(
                         frame,
                         name,
                         x,
@@ -326,24 +352,82 @@ def locate_object_and_save(
                         x_distance,
                         y_distance)
 
-                    with open(f"{output_dir}/image_processed.csv", "a") as processed_log_file:
-                        processed_log_file.write(
-                            f"{output_dir}, {image_filename}, {x_distance}, {y_distance}, {lat_object}, {long_object}\n")
+                with open(f"{output_dir}/image_processed.csv", "a") as processed_log_file:
+                    processed_log_file.write(
+                        f"{output_dir}, {image_filename}, {x_distance}, {y_distance}, {lat_object}, {long_object}\n")
 
                 if detectedObject == False:
                     detectedObject = True
                     print(f"Object detected")
-                else:
-                    # Reset flag if object is not detected anymore
-                    detectedObject = False
             else:
-                # Reset flag if area is too small
+                 # Reset flag if area is too small
                 detectedObject = False
-                
+    else:
+    # Reset flag if no contours are found	
+     detectedObject = False
+               
+    return frame
 
+
+def locate_object(
+        colorProfile, hsv,
+        frame, min_area, detectedObject,
+        pitch, roll, altitude, heading, lat_position, long_position):
+    """
+    Locate the object in the frame based on the specified color profile.
+    This function is used for post-processing of the images that have been shot
+    and saved along with the telemetry data. This function is used in mission1.
+    """
+    # mask for the specified color profile
+    _, hsv_lower, hsv_upper = set_colorProfiles(colorProfile)
+    mask = cv2.inRange(hsv, hsv_lower, hsv_upper)
+
+    # remove noise from mask
+    # mask = remove_noise(mask)
+
+    # find contours in the mask
+    contours, _ = cv2.findContours(
+        mask.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+    
+    e_ned = None
+    n_ned = None
+
+    if contours:
+        biggest = sorted(contours, key=cv2.contourArea, reverse=True)[0] 
+        area = cv2.contourArea(biggest)
         
-    return frame, n_ned, e_ned
+        # Check if area is larger than minimum area
+        if area >= min_area:
+            x, y, w, h = cv2.boundingRect(biggest)
 
+                # calculate GPS coordinates
+            _, _, _, _, n_ned, e_ned = calculate_gps(
+                    x,
+                    y,
+                    w,
+                    h,
+                    pitch,
+                    roll,
+                    altitude,
+                    heading,
+                    lat_position,
+                    long_position,
+                    frame)
+
+            if detectedObject == False:
+                    detectedObject = True
+                    print(f"Object detected")
+            
+            return n_ned, e_ned
+                    
+        else:
+             # Reset flag if area is too small
+            detectedObject = False
+    else:
+        # Reset flag if no contours are found
+         detectedObject = False
+               
+    return n_ned, e_ned
 
 
 def create_directory(sequence):
@@ -387,148 +471,15 @@ def test_velocity():
     return velocity
 
 
-def test_main_mission_2(
-        mission_id, vid, colorProfile, min_area,
-        pitch, roll, altitude, heading, speed, lat_position, long_position):
-    """
-    This is a concept for the image processing in Mission 1.
-    The function continously locates the object in the frame and saves the 
-    image after specified time intervals.
-    The telemetry data is not saved in this version. This function is used to
-    test the functionality of the image processing module for mission 2 and 3
-    """
-    # Initialize object detection variables
-    cv2.startWindowThread()
-    detectedObject = False
-    speed = speed
-
-    # Initialize image saving variables
-    new_dir = True
-    last_time_saved = time.time()
-    save_delay = 1  # Save image every 1 seconds
-    sequence = 0
-
-    while True:
-
-        velocity = test_velocity()
-        # Capture frame and convert to HSV
-        hsv, frame = capture_and_convert(vid)
-
-        mask, hsv, frame = locate_object_and_save(
-            None, None, mission_id,
-            colorProfile, hsv, frame, min_area,
-            detectedObject, pitch, roll, altitude, heading,
-            lat_position, long_position)
-
-        # Display the original frame and the grayscale frame
-        cv2.putText(frame, f"Berechnung Distanz", (30, 30),
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
-        cv2.imshow('Mask', mask)
-        cv2.imshow('HSV', hsv)
-        cv2.imshow('Original Frame', frame)
-
-        if velocity < 5:
-
-            # Check if new directory has to be created
-            if new_dir == True:
-                output_dir = create_directory(sequence)
-                new_dir = False
-                image_count = 0  # Reset numbering for images in new directory
-                sequence += 1
-
-            # Only save image every 1 seconds
-            if time.time() - last_time_saved >= save_delay:
-                save_image(frame, image_count, output_dir, sequence)
-                last_time_saved = time.time()
-                image_count += 1
-
-        else:
-            new_dir = True
-
-        if cv2.waitKey(1) & 0xFF == ord('q'):
-            break
-
-    cv2.destroyAllWindows()
-
-
-def test_main_mission_1(
-        vid, pitch, roll, altitude,
-        heading, speed, lat_position, long_position):
-    """
-    This is the concept for the image processing in Mission 1.
-    The function just saves the image after specified time intervals and
-    will not locate the object right away. The telemetry data is saved as
-    timestamp for each image in order to calculate the distance later
-    into a CSV files. This function is used to test the functionality of the main
-    function for mission 1.
-    """
-    # Initialize object detection variables
-    speed = speed
-
-    # Initialize image saving variables
-    new_dir = True
-    last_time_saved = time.time()
-    save_delay = 1  # Save image every 1 seconds
-    sequence = 0
-
-    while True:
-        # Capture frame and convert to HSV
-
-        # Telemetry data that will come from the flight controller
-        velocity = test_velocity()
-        altitude = altitude
-        heading = heading
-        lat_position = lat_position
-        long_position = long_position
-        pitch = pitch
-        roll = roll
-
-       # _,frame = capture_and_convert(vid)
-       # cv2.imshow("Camera Preview", frame)
-
-        # Display the original frame and the grayscale frame
-
-        if velocity < 5:
-            # Check if new directory has to be created
-            if new_dir == True:
-                output_dir = create_directory(sequence)
-                new_dir = False
-                image_count = 0  # Reset numbering for images in new directory
-                sequence += 1
-
-            # Only save image every 1 seconds in the directory with
-            # neccesary telemetry data
-            if time.time() - last_time_saved >= save_delay:
-                image_filename = save_image(
-                    vid, image_count, output_dir, sequence)
-                last_time_saved = time.time()
-                image_count += 1
-                with open(f"{output_dir}/image_saved.csv", "a") as log_file:
-                    log_file.write(
-                        f"{output_dir}, {image_filename}, {pitch}, {roll}, {altitude}, {heading}, {lat_position}, {long_position}\n")
-                print("Captured frame...")
-
-        else:
-            new_dir = True
-
-        if cv2.waitKey(1) & 0xFF == ord('q'):
-            vid.stop()
-            break
-    cv2.destroyAllWindows()
-    return sequence
-
-
-def main_mission_1_post_processing(sqeuence, colorProfile, min_area):
+def main_mission_1_post_processing(sequence, colorProfile, min_area):
     """
     After acquiring the images, this function processes and locates
     the object by reading the CSV files. In case an object is located, a 
     second CSV files with the GPS object coordinates is created.
     """
 
-    mission_id = 1
-
     # Read the CSV file with telemetry data
-    for i in range(sqeuence):
+    for i in range(sequence):
         with open(f"/media/aviator/INTENSO/BildsequenzTest_{i}/image_saved.csv", "r") as log_file:
             lines = log_file.readlines()
 
@@ -546,10 +497,9 @@ def main_mission_1_post_processing(sqeuence, colorProfile, min_area):
             detectedObject = False
 
             # Locate the object and save locations in CSV file
-            frame, _, _ = locate_object_and_save(
+            frame = locate_object_and_save(
                 output_dir,
                 image_filename,
-                mission_id,
                 colorProfile,
                 hsv,
                 frame,
@@ -596,10 +546,14 @@ async def main_mission_1(drone, vid):
             break
 
         # Check if new directory has to be created
-        if scalar_velocity < 1:
+        if scalar_velocity < 2:
 
             if new_dir == True:
                 output_dir = create_directory(sequence)
+                
+                set_camera_controls(vid)
+                camera_control_stamp = time.time()
+                
                 new_dir = False
                 image_count = 0  # Reset numbering for images in new directory
                 sequence += 1
@@ -612,6 +566,12 @@ async def main_mission_1(drone, vid):
                     image_count, 
                     output_dir, 
                     sequence)
+                
+            if time.time() - camera_control_stamp >= 15:
+                set_camera_controls2(vid)
+
+            if time.time() - camera_control_stamp >= 30:
+                set_camera_controls3(vid)
 
                 last_time_saved = time.time()
                 image_count += 1
@@ -636,8 +596,6 @@ async def main_mission_2(drone, vid):
     min_area = 900
     colorProfile = 4
     detectedObject = False
-    mission_id = 2
-
 
     latitude, longitude, altitude, roll, pitch, yaw, status, scalar_velocity, key = await cm.get_parameters_for_image_processing(drone)
 
@@ -647,10 +605,7 @@ async def main_mission_2(drone, vid):
 
     hsv, frame = capture_and_convert(vid)
 
-    _, n_ned, e_ned = locate_object_and_save(
-        None,
-        None,
-        mission_id,
+    n_ned, e_ned = locate_object(
         colorProfile,
         hsv,
         frame,
@@ -662,7 +617,6 @@ async def main_mission_2(drone, vid):
         yaw,
         latitude,
         longitude
-
         )
 
     if n_ned or e_ned == None:
