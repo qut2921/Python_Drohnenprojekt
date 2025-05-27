@@ -2,7 +2,14 @@ import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 import control.controller_functions as cl  # type: ignore
+import control.communicator as cm  # type: ignore
 import asyncio
+import logging
+
+async def test_telemetry(drone):
+    while True:
+        heading = await cm.get_heading(drone)
+        print(f"\r Heading: {heading}", end="")
 
 async def test_parallel_tasks():
     """
@@ -15,6 +22,9 @@ async def test_parallel_tasks():
     await cl.arm_drone(drone)
     await asyncio.sleep(2)
 
+    # Start parallel telemetry tasks
+    asyncio.create_task(test_telemetry(drone))
+
     # 6  Loop through the remaining altitudes
     home_position = await drone.telemetry.home().__anext__()
     latitude = home_position.latitude_deg
@@ -24,7 +34,7 @@ async def test_parallel_tasks():
     await cl.default_takeoff(drone, 5)
     await asyncio.sleep(2)
 
-    # 7  Fly in a spiral pattern
-    await cl.fly_spiral_search(drone, latitude, longitude, 5)
+    # 8  Land the drone
+    await cl.default_land_and_disarm(drone)
 
-asyncio.run(test_spirale())
+asyncio.run(test_parallel_tasks())

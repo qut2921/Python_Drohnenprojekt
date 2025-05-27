@@ -13,7 +13,7 @@ dt = 0.1
 steps = 500
 # PID-Regler-Test: Parameter explizit setzen
 state = {"integral": 0.0, "prev_error": 0.0}
-kp, ki, kd = 0.8, 0.05, 0.1  # Hier bewusst übertrieben
+pid_params = {"kp": 0.8, "ki": 0.05, "kd": 0.1}  # Hier bewusst übertrieben
 
 
 # Logs für Plot
@@ -24,7 +24,7 @@ velocity_data = []
 # Simulationsschleife
 for t in range(steps):
     error = x
-    v, state = cl.pid_update(error, dt, state, kp=kp, ki=ki, kd=kd, max_output=1.0)
+    v, state = cl.pid_update(error, dt, state, **pid_params, max_output=1.0)
     x -= v * dt
 
     time_data.append(t * dt)
