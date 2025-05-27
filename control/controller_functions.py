@@ -26,9 +26,9 @@ async def connect_drone() -> System:
     print("🔄 Connecting to drone...")
     try:
         # Connect to the drone to SITL
-        await drone.connect(system_address="udp://:14540")
+        #await drone.connect(system_address="udp://:14540")
         # Connect to the drone to real hardware
-        #await drone.connect(system_address="serial:///dev/ttyAMA0:57600")
+        await drone.connect(system_address="serial:///dev/ttyAMA0:57600")
     except Exception as e:
         print(f"❌ Error connecting to drone: {e}")
         return
