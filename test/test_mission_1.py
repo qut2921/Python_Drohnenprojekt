@@ -21,8 +21,8 @@ async def mission_1():
         4. User confirmation before takeoff
         5. Take off to 5 meters
         6. Fly to each location
-        7. Wait for 5 seconds at each location
-        8. Land and disarm
+        7. Wait for 45 seconds at each location
+        8. Land and disarm at home location
     """
 
     # Generate the mission plan
