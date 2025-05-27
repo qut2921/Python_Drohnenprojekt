@@ -95,6 +95,6 @@ async def mission_2():
                                longitude,
                                target_altitude)
         await cl.default_land_and_disarm(drone)
-        
-    #8. precision land
-    await cl.precision_land_velocity_pid_method(drone, image_processing)
+    else:    
+        #8. precision land
+        await cl.precision_land_velocity_pid_method(drone, vid)
