@@ -62,22 +62,19 @@ async def mission_2():
             print("⚠️ Please enter 'y' to start or 'n' to abort.")
 
     #5. takeoff to 15 meters
-    target_altitude = 15.0
+    target_altitude = 5.0
     await cl.default_takeoff(drone, target_altitude)
     await asyncio.sleep(1)
 
     #6. fly to location
     target_altitude = 15.0
-    for i, (latitude, longitude) in enumerate(mission_locations, start=1):
-        print(
-            f"\n🟣 Flying to location {i}/{len(mission_locations)}: "
+    latitude, longitude = mission_locations[0]
+    print(
+            f"\n🟣 Flying to single location: "
             f"{latitude}, {longitude}, {target_altitude} m"
         )
-        await cl.goto_location(drone,
-                               latitude,
-                               longitude,
-                               target_altitude)
-        await drone.action.hold()
+    await cl.goto_location(drone, latitude, longitude, target_altitude)
+    await drone.action.hold()
 
     #7. if no target detected: fly spiral search 
     position = await drone.telemetry.position().__anext__()
@@ -86,7 +83,8 @@ async def mission_2():
 
     n_ned, e_ned = await ip.main_mission_2(drone, vid)
     if n_ned is None or e_ned is None:
-        bool = await cl.fly_spiral_search(drone, center_lat, center_lon, vid)
+        bool = await cl.fly_spiral_search(drone, center_lat,
+                                          center_lon, vid, target_altitude)
 
     position = await drone.telemetry.position().__anext__()
     center_lat = position.latitude_deg
@@ -94,18 +92,19 @@ async def mission_2():
 
     n_ned, e_ned = await ip.main_mission_2(drone, vid)
     if n_ned is None or e_ned is None:
-        bool = await cl.fly_spiral_search(drone, center_lat, center_lon, vid)
+        bool = await cl.fly_spiral_search(drone, center_lat,
+                                          center_lon, vid, target_altitude)
 
     if bool == False:
         #Return to land
-        position = await drone.telemetry.home().__anext__()
-        latitude = position.latitude_deg
-        longitude = position.longitude_deg
+        home = await drone.telemetry.home().__anext__()
+        latitude = home.latitude_deg
+        longitude = home.longitude_deg
         await cl.goto_location(drone,
                                latitude,
                                longitude,
                                target_altitude)
         await cl.default_land_and_disarm(drone)
-        
-    #8a. precision land
-    await cl.precision_land_velocity_pid_method(drone, image_processing)
+    else:    
+        #8. precision land
+        await cl.precision_land_velocity_pid_method(drone, vid)
