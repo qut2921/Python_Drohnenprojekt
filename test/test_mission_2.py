@@ -85,6 +85,8 @@ async def mission_2():
     if n_ned is None or e_ned is None:
         bool = await cl.fly_spiral_search(drone, center_lat,
                                           center_lon, vid, target_altitude)
+    else:
+        bool = True
 
     position = await drone.telemetry.position().__anext__()
     center_lat = position.latitude_deg
@@ -94,6 +96,8 @@ async def mission_2():
     if n_ned is None or e_ned is None:
         bool = await cl.fly_spiral_search(drone, center_lat,
                                           center_lon, vid, target_altitude)
+    else:
+        bool = True
 
     if bool == False:
         #Return to land

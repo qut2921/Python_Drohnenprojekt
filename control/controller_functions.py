@@ -37,7 +37,7 @@ async def connect_drone() -> System:
     return drone
 
 
-async def arm_drone(drone: System):
+async def arm_drone(drone):
     """
     Arms the drone.
 
@@ -57,13 +57,13 @@ async def arm_drone(drone: System):
         em.log(message)
         return
     
-    async for armed in drone.telemetry.armed():
-        if armed:
-            print("✅ Drone armed")
-            break
+    #async for armed in drone.telemetry.armed():
+     #   if armed:
+      #      print("✅ Drone armed")
+       #     break
 
 
-async def default_takeoff(drone: System, target_altitude: float = 10.0):
+async def default_takeoff(drone, target_altitude):
     """
     Arms the drone and performs an automatic takeoff.
 
@@ -376,7 +376,7 @@ async def fly_spiral_search(
     center_lat,
     center_lon,
     vid,
-    target_altitude = 15.0
+    target_altitude
 ) -> bool:
     """
     Performs a tight spiral search around a GPS center point
@@ -384,8 +384,8 @@ async def fly_spiral_search(
     
     :return: True if a target is detected, otherwise False
     """
-    max_radius = 10
-    radius_step = 2
+    max_radius = 3.0
+    radius_step = 0.5
     points_per_circle = 8
     radius = radius_step
     angle = 0.0
@@ -406,7 +406,7 @@ async def fly_spiral_search(
 
             # Chechk if the camera detects a target
             n_ned, e_ned = await ip.main_mission_2(drone, vid)
-            if n_ned is not None or e_ned is not None:
+            if n_ned is not None and e_ned is not None:
                 return True  # Target found, exit the spiral search
 
             angle += angle_step
