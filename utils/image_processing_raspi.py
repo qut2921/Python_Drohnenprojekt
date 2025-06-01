@@ -569,9 +569,11 @@ async def main_mission_1(drone, vid):
                 
             if time.time() - camera_control_stamp >= 15:
                 set_camera_controls2(vid)
+                print("Changed Camera Settings! Exposure:1000")
 
             if time.time() - camera_control_stamp >= 30:
                 set_camera_controls3(vid)
+                print("Changed Camera Settings! Exposure:1500")
 
                 last_time_saved = time.time()
                 image_count += 1

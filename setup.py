@@ -6,7 +6,7 @@ setup(
         'opencv-python-headless>=4.5.0',
         'mavsdk>=3.0.1',
         'picamera2>=0.3.25'
-        'shapely>=2.1.1'
+        'shapely'
         ],
     include_package_data=True,
     packages=find_packages(exclude=[

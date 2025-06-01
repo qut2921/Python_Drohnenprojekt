@@ -75,9 +75,9 @@ async def mission_1():
     home_lat = home.latitude_deg
     home_long = home.longitude_deg
     mission_locations = [
-        {48.76762, 11.33715},
-        {48.76774, 11.33689},
-        {48.76784, 11.33665},
+        {48.76821, 11.33589},
+        {48.76813, 11.33609},
+        {48.76803, 11.33628},
         {home_lat, home_long}
     ]
 
@@ -96,18 +96,20 @@ async def mission_1():
     # Start camera
     vid = ip.start_videoCapture(1)
 
-    # 5. Take off to 5 meters
-    target_altitude = 5
-    await cl.default_takeoff(drone, target_altitude)
-    await asyncio.sleep(1)
-
-    # 6. Start photo capture
+     # 6. Start photo capture
     print("\nStarting photo capture...")
     try:
-        asyncio.create_task(ip.main_mission_1(drone, vid))
+        asyncio.create_task(await ip.main_mission_1(drone, vid))
     except Exception as e:
         print(f"⚠️ Error starting photo capture: {e}")
     print("Photo capture started.")
+
+    # 5. Take off to 5 meters
+    target_altitude = 5.0
+    await cl.default_takeoff(drone, target_altitude)
+    await asyncio.sleep(1)
+
+
 
     # 7. Fly to each location
     start_index = cl.load_progress()

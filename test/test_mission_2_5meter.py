@@ -44,7 +44,7 @@ async def mission_2():
     await asyncio.sleep(1)
 
     # set location
-    mission_locations = [(48.76786, 11.33660)] # non target location
+    mission_locations = [(48.76806, 11.33572)] # non target location
 
     # Start camera
     vid = ip.start_videoCapture(2)
@@ -62,7 +62,7 @@ async def mission_2():
             print("⚠️ Please enter 'y' to start or 'n' to abort.")
 
     #5. takeoff to 15 meters
-    target_altitude = 5
+    target_altitude = 5.0
     await cl.default_takeoff(drone, target_altitude)
     await asyncio.sleep(1)
 
@@ -84,6 +84,8 @@ async def mission_2():
     if n_ned is None or e_ned is None:
         bool = await cl.fly_spiral_search(drone, center_lat,
                                           center_lon, vid, target_altitude)
+    else:
+        bool = True
 
     if bool == False:
         #Return to land
