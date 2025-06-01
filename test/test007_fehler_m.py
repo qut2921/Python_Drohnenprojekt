@@ -1,5 +1,6 @@
 import asyncio
 from mavsdk import System
+from mavsdk.offboard import (OffboardError, VelocityBodyYawspeed)
 
 class Drone:
     def __init__(self):
@@ -11,10 +12,14 @@ class Drone:
         """Verbindet sich mit der Drohne"""
         await self.drone.connect(system_address="udp://:14540")
         print("Drohne verbunden!")
-print (" ")
+        print(" ")
+
     async def execute_command(self, command):
         """Führt einen Befehl aus und speichert ihn im Log"""
         self.commands_log.append(command)
+        
+        await self.drone.offboard.set_velocity_body(VelocityBodyYawspeed(0.0, 0.0, 0.0, 0.0))
+        await self.drone.offboard.start()
 
         if command == "UP":
             print("Die Drohne Steigt auf...")
@@ -33,9 +38,7 @@ print (" ")
 
         elif command == "LEFT":
             print("Die Drohne Bewegt sich nach links...")
-            await self.drone.offboard.set_velocity_body(
-                mavsdk.offboard.VelocityBodyYawspeed(0.0, -1.0, 0.0, 0.0)
-            )
+            await self.drone.offboard.set_velocity_body(VelocityBodyYawspeed(0.0, 0.0, 0.0, 0.0))
             await asyncio.sleep(3)
             self.position[1] -= 1
 
@@ -79,7 +82,8 @@ async def main():
     await my_drone.execute_command("BACKWARD")
     await my_drone.execute_command("DOWN")
 
-    print("Befehle erfolgreich ausgeführt :", my_drone.verify_commands(["UP", "RIGHT", "FORWARD", "LEFT", "BACKWARD", "DOWN"]))
+    print("Befehle erfolgreich ausgeführt :", my_drone.verify_commands(
+        ["UP", "RIGHT", "FORWARD", "LEFT", "BACKWARD", "DOWN"]))
 
 
 asyncio.run(main())
