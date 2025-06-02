@@ -593,10 +593,9 @@ async def main_mission_1(drone, vid):
     return sequence
 
 
-async def main_mission_2(drone, vid):
+async def main_mission_2(drone, vid, colorProfile):
 
     min_area = 900
-    colorProfile = 4
     detectedObject = False
 
     latitude, longitude, altitude, roll, pitch, yaw, status, scalar_velocity, key = await cm.get_parameters_for_image_processing(drone)
