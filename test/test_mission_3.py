@@ -1,6 +1,7 @@
 import control.controller_functions as cl 
 import utils.image_processing as image_processing
 import utils.image_processing_raspi as ip
+from mavsdk.telemetry import LandedState
 import asyncio
 import math
 from mavsdk import system
@@ -15,14 +16,10 @@ async def mission_3():
     3. arm the drone and set location
     4. user confirmation before takeoff
     5. takeoff to  15 meters
-    6. fly to location 
-    7. precisionland on target
-    8. takeoff to 15 meters
-    9. fly to location
-    10. precisionland on target
-    11. takeoff to 15 meters
-    12. final approach 
-    13. landing 
+    6. fly to location (for all targets)
+    7. precisionland on target (for all targets)
+    8. takeoff to 15 meters (for all targets)
+    13. landing (at final location)
 
     """
 
@@ -70,53 +67,40 @@ async def mission_3():
     await asyncio.sleep(1)
 
     #6. fly to location
-    target_altitude = 15.0
-    latitude, longitude = mission_locations[0]
-    print(
-            f"\n🟣 Flying to single location: "
+    start_index = cl.load_progress()
+    # lat und long muss bei Hanna umgedreht werden (longitude, latitude)
+    for i, (latitude, longitude) in enumerate(mission_locations, start=1):
+        # Skip already visited locations
+        if i <= start_index:
+            print(f"\n⏭️ Skipping location {i} (already completed)")
+            continue
+    
+        print(
+            f"\n🟣 Flying to location {i}/{len(mission_locations)}: "
             f"{latitude}, {longitude}, {target_altitude} m"
         )
-    await cl.goto_location(drone, latitude, longitude, target_altitude)
-    await drone.action.hold()
+        await cl.goto_location(drone, latitude, longitude, target_altitude)
+        await drone.action.hold()
 
-    #7. precisionland on target
-    await cl.precision_land_velocity_pid_method(drone, vid)
+        if i < len(mission_locations):
+            #7. precisionland on target
+            await cl.precision_land_velocity_pid_method(drone, vid)
 
-    #8. takeoff to 15 meters
-    target_altitude = 15.0
-    await cl.default_takeoff(drone, target_altitude)
-    await asyncio.sleep(1)
-
-    #9. fly to location
-    target_altitude = 15.0
-    latitude, longitude = mission_locations[0]
-    print(
-            f"\n🟣 Flying to single location: "
-            f"{latitude}, {longitude}, {target_altitude} m"
-        )
-    await cl.goto_location(drone, latitude, longitude, target_altitude)
-    await drone.action.hold()
-
-    #10. precisionland on target
-    await cl.precision_land_velocity_pid_method(drone, vid)
-
-    #11. takeoff to 15 meters
-    target_altitude = 15.0
-    await cl.default_takeoff(drone, target_altitude)
-    await asyncio.sleep(1)
-
-    #12. final approach 
-    target_altitude = 15.0
-    latitude, longitude = mission_locations[0]
-    print(
-            f"\n🟣 Flying to single location: "
-            f"{latitude}, {longitude}, {target_altitude} m"
-        )
-    await cl.goto_location(drone, latitude, longitude, target_altitude)
-    await drone.action.hold()
+            async for state in drone.telemetry.landed_state():
+                print(f"\r🔍 Landed State: {state}", end="")
+                if state == LandedState.ON_GROUND:
+                    print("\n✅ Drone is confirmed landed.")
+                    print("Takeoff again")
+                    await asyncio.sleep(1)
+                    #8. takeoff to 15 meters
+                    await cl.default_takeoff(drone, target_altitude)
+                    break
+        else:
+            print("\n✅ All locations completed.")
+            break
 
     #13. landing 
-    await cl.precision_land_velocity_pid_method(drone, vid)
+    await cl.default_land_and_disarm(drone)
     
 
 
