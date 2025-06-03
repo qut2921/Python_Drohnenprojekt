@@ -1,7 +1,8 @@
 import sys
 import os
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
 import control.controller_functions as cl  # type: ignore
+import control.logging as log  # type: ignore
 import asyncio
 
 
@@ -13,8 +14,12 @@ async def test_altitude():
     """
     altitudes = [5]
 
+    #Start logging
+    logfile = "alt_test.log"
+    log.log("Altitude test gestartet", logfile)
+
     # 1 ️ Connect to the drone
-    drone = await cl.connect_drone()
+    drone = await cl.connect_drone(logfile)
 
     # 2  User confirmation before arming
     while True:
@@ -29,8 +34,7 @@ async def test_altitude():
             print("⚠️ Please enter 'y' to start or 'n' to abort.")
 
     # 3 ️ Arm the drone
-    await cl.arm_drone(drone)
-    await asyncio.sleep(2)
+    await cl.arm_drone(drone, logfile)
 
     # 4  User confirmation before arming
     while True:
@@ -45,7 +49,7 @@ async def test_altitude():
             print("⚠️ Please enter 'y' to start or 'n' to abort.")
 
     # 5  Take off to the first altitude
-    await cl.default_takeoff(drone, altitudes[0])
+    await cl.default_takeoff(drone, altitudes[0], logfile)
     await asyncio.sleep(2)
 
     # 6  Loop through the remaining altitudes
@@ -54,7 +58,7 @@ async def test_altitude():
     longitude = home_position.longitude_deg
 
     for target_alt in altitudes[1:]:
-        print(f"\n🔼 Changing altitude to {target_alt} meters")
+        log.log(f"\n🔼 Changing altitude to {target_alt} meters")
         await cl.goto_location(drone, latitude, longitude, target_alt)
 
         # Hovers 5 seconds at each altitude
@@ -62,7 +66,7 @@ async def test_altitude():
         await asyncio.sleep(5)
 
     # 6  Land
-    await cl.default_land_and_disarm(drone)
+    await cl.default_land_and_disarm(drone, logfile)
 
 
 # Run the mission
