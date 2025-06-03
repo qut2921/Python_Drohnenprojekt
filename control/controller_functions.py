@@ -9,7 +9,7 @@ import asyncio
 from mavsdk import System
 from mavsdk.offboard import VelocityNedYaw
 from mavsdk.offboard import PositionNedYaw
-#import utils.image_processing_raspi as ip
+import utils.image_processing_raspi as ip
 from mavsdk.telemetry import LandedState
 import math
 import control.error_message as em
