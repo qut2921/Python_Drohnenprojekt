@@ -30,14 +30,14 @@ async def connect_drone(logfile) -> System:
     log.log("🔄 Connecting to drone...", logfile)
     try:
         # Connect to the drone to SITL
-        await drone.connect(system_address="udp://:14540")
+        #await drone.connect(system_address="udp://:14540")
         # Connect to the drone to real hardware
-        #await drone.connect(system_address="serial:///dev/ttyAMA0:57600")
+        await drone.connect(system_address="serial:///dev/ttyAMA0:57600")
     except Exception as e:
         log.log(f"❌ Error connecting to drone: {e}", logfile)
         return
     await asyncio.sleep(1)
-    log.log("✅ Drone connected", logfile)
+    log.log("✅ Drone connected\n", logfile)
     return drone
 
 
@@ -55,7 +55,7 @@ async def arm_drone(drone, logfile):
     log.log("🔄 Arming...", logfile)
     try:
         await drone.action.arm()
-        log.log("✅ Drone armed", logfile)
+        log.log("✅ Drone armed\n", logfile)
     except Exception as e:
         message = f"❌ Error arming drone: {e}"
         log.log(message, logfile)
@@ -102,7 +102,7 @@ async def default_takeoff(drone, target_altitude, logfile):
         current_height = position.relative_altitude_m
         print(f"\r⬆️ Current height: {current_height:.1f} m", end="")
         if abs(current_height - target_altitude) < 0.1:
-            log.log("✅ Target altitude reached", logfile)
+            log.log("\n✅ Target altitude reached\n", logfile)
             break
 
 
@@ -199,7 +199,7 @@ async def goto_location(drone: System, target_latitude: float,
         if (abs(current_latitude - target_latitude) < 0.000005 and
                 abs(current_longitude - target_longitude) < 0.00005 and
                 abs(current_height - target_altitude) < 0.1):
-            log.log("✅ Target location reached", logfile)
+            log.log("\n✅ Target location reached\n", logfile)
             break
 
 
@@ -225,13 +225,13 @@ async def default_land_and_disarm(drone: System, logfile):
     async for state in drone.telemetry.landed_state():
         print(f"\r🔍 Landed State: {state}", end="")
         if state == LandedState.ON_GROUND:
-            log.log("✅ Drone is confirmed landed.", logfile)
+            log.log("\n✅ Drone is confirmed landed.\n", logfile)
             break
 
     log.log("🔄 Disarming...", logfile)
     try:
         await drone.action.disarm()
-        log.log("✅ Drone disarmed", logfile)
+        log.log("✅ Drone disarmed\n", logfile)
     except Exception as e:
         message = f"❌ Failed to disarm: {e}"
         log.log(message, logfile)
@@ -311,7 +311,7 @@ async def precision_land_velocity_pid_method(drone, vid, color, logfile):
 
         # Check if the drone is aligned within the threshold
         if abs(delta_north) < alignment_threshold and abs(delta_east) < alignment_threshold:
-            log.log("✅ Alignment complete. Starting descent.", logfile)
+            log.log("✅ Alignment complete. Starting descent.\n", logfile)
             break
 
         await asyncio.sleep(dt)
@@ -353,7 +353,7 @@ async def precision_land_velocity_pid_method(drone, vid, color, logfile):
 
         # Check if the drone is aligned within the landing threshold
         if current_alt < landing_threshold:
-            log.log("✅ Altitude < 0.5 m → Landing", logfile)
+            log.log("\n✅ Altitude < 0.5 m → Landing\n", logfile)
             await drone.action.land()
             break
 

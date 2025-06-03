@@ -12,7 +12,7 @@ async def test_altitude():
     Makes the drone fly up and down between different altitudes.
     Sequence: 5 → 10 → 15 → 10 → 5 meters, then lands.
     """
-    altitudes = [5]
+    altitudes = [5, 10]
 
     #Start logging
     logfile = "alt_test.log"
@@ -58,8 +58,8 @@ async def test_altitude():
     longitude = home_position.longitude_deg
 
     for target_alt in altitudes[1:]:
-        log.log(f"\n🔼 Changing altitude to {target_alt} meters")
-        await cl.goto_location(drone, latitude, longitude, target_alt)
+        log.log(f"🔼 Changing altitude to {target_alt} meters")
+        await cl.goto_location(drone, latitude, longitude, target_alt, logfile)
 
         # Hovers 5 seconds at each altitude
         await drone.action.hold()
