@@ -1,6 +1,10 @@
+import sys
+import os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 import control.controller_functions as cl 
 import utils.image_processing as image_processing
 import utils.image_processing_raspi as ip
+import control.logging as log
 import asyncio
 import math
 from mavsdk import system
@@ -21,9 +25,12 @@ async def mission_2():
     8a. precision land
 
     """
+    # Start logging
+    logfile = "mission2_5meter.log"
+    log.log("Mission 2 5m gestartet", logfile)
 
     #1. connect to the drone
-    drone = await cl.connect_drone()
+    drone = await cl.connect_drone(log)
 
     #2. user confirmation before arming
     while True:
@@ -40,11 +47,11 @@ async def mission_2():
     
     #3. arm the drone and set location
     # arm the drone
-    await cl.arm_drone(drone)
+    await cl.arm_drone(drone, logfile)
     await asyncio.sleep(1)
 
     # set location
-    mission_locations = [(48.76806, 11.33572)] # non target location
+    mission_locations = [(48.76806, 11.33572, 4)] # non target location
 
     # Start camera
     vid = ip.start_videoCapture(2)
@@ -63,16 +70,16 @@ async def mission_2():
 
     #5. takeoff to 15 meters
     target_altitude = 5.0
-    await cl.default_takeoff(drone, target_altitude)
+    await cl.default_takeoff(drone, target_altitude, logfile)
     await asyncio.sleep(1)
 
     #6. fly to location
-    latitude, longitude = mission_locations[0]
+    latitude, longitude, color = mission_locations[0]
     print(
             f"\n🟣 Flying to single location: "
             f"{latitude}, {longitude}, {target_altitude} m"
         )
-    await cl.goto_location(drone, latitude, longitude, target_altitude)
+    await cl.goto_location(drone, latitude, longitude, target_altitude, logfile)
     await drone.action.hold()
 
     #7. if no target detected: fly spiral search 
@@ -80,23 +87,26 @@ async def mission_2():
     center_lat = position.latitude_deg
     center_lon = position.longitude_deg
 
-    n_ned, e_ned = await ip.main_mission_2(drone, vid)
+    n_ned, e_ned = await ip.main_mission_2(drone, vid, color) # orange target
     if n_ned is None or e_ned is None:
         bool = await cl.fly_spiral_search(drone, center_lat,
-                                          center_lon, vid, target_altitude)
+                                          center_lon, vid, color,
+                                          target_altitude, logfile)
     else:
         bool = True
 
     if bool == False:
         #Return to land
+        log.log("No target found, returning to home.", logfile)
         home = await drone.telemetry.home().__anext__()
         latitude = home.latitude_deg
         longitude = home.longitude_deg
         await cl.goto_location(drone,
                                latitude,
                                longitude,
-                               target_altitude)
-        await cl.default_land_and_disarm(drone)
+                               target_altitude,
+                               logfile)
+        await cl.default_land_and_disarm(drone, logfile)
     else:    
         #8. precision land
-        await cl.precision_land_velocity_pid_method(drone, vid)
+        await cl.precision_land_velocity_pid_method(drone, vid, color, logfile)
