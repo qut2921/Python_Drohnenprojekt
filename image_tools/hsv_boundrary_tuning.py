@@ -2,8 +2,8 @@ import cv2
 import numpy as np
 
 
-image_file = "BildsequenzTest_0/frame_tuning.jpg"
-color = "blue"  # Change to "blue" or "green" as needed
+image_file = "BildsequenzTest_0/frame_0_0.jpg"
+color = "red"  # Change to "blue" or "green" as needed
 
 def nothing(x):
     pass

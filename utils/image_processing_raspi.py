@@ -317,8 +317,17 @@ def locate_object_and_save(
     and saved along with the telemetry data. This function is used in mission1.
     """
     # mask for the specified color profile
-    name, hsv_lower, hsv_upper = set_colorProfiles(colorProfile)
-    mask = cv2.inRange(hsv, hsv_lower, hsv_upper)
+    if colorProfile == 1:
+        name1, lower_red1, upper_red1 = set_colorProfiles(1)
+        name2, lower_red2, upper_red2 = set_colorProfiles(3)
+        mask1 = cv2.inRange(hsv, lower_red1, upper_red1)
+        mask2 = cv2.inRange(hsv, lower_red2, upper_red2)
+        mask = cv2.bitwise_or(mask1, mask2)
+        mask = cv2.threshold(mask, 127, 255, cv2.THRESH_BINARY)[1]
+    
+    else:
+        name, hsv_lower, hsv_upper = set_colorProfiles(colorProfile)
+        mask = cv2.inRange(hsv, hsv_lower, hsv_upper)
 
     # remove noise from mask
     # mask = remove_noise(mask)
@@ -496,6 +505,9 @@ def main_mission_1_post_processing(sequence, colorProfile, min_area):
             # Convert into float values
             pitch, roll, altitude, heading, lat_position, long_position = float(pitch), float(
                 roll), float(altitude), float(heading), float(lat_position), float(long_position)
+            
+            base_path = '/media/aviator/INTENSO/'
+            output_dir = output_dir.replace(base_path, '')
 
             # Read the image and convert it to HSV color space
             hsv, frame = read_image_and_convert(output_dir, image_filename)
