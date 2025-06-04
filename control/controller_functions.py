@@ -2,20 +2,22 @@
 Comands to controle the mission with repeating modules
 
 """
+import json
+import control.logging as log
+import control.error_message as em
+import math
+from mavsdk.telemetry import LandedState
+import utils.image_processing_raspi as ip
+from mavsdk.offboard import PositionNedYaw
+from mavsdk.offboard import VelocityNedYaw
+from mavsdk import System
+import asyncio
 import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-import asyncio
-from mavsdk import System
-from mavsdk.offboard import VelocityNedYaw
-from mavsdk.offboard import PositionNedYaw
-import utils.image_processing_raspi as ip
-from mavsdk.telemetry import LandedState
-import math
-import control.error_message as em
-import control.logging as log
-import json
-import os
+
+
+STATE_FILE = "mission1_state.json"
 
 
 async def connect_drone(logfile) -> System:
@@ -30,7 +32,7 @@ async def connect_drone(logfile) -> System:
     log.log("🔄 Connecting to drone...", logfile)
     try:
         # Connect to the drone to SITL
-        #await drone.connect(system_address="udp://:14540")
+        # await drone.connect(system_address="udp://:14540")
         # Connect to the drone to real hardware
         await drone.connect(system_address="serial:///dev/ttyAMA0:57600")
     except Exception as e:
@@ -60,11 +62,6 @@ async def arm_drone(drone, logfile):
         message = f"❌ Error arming drone: {e}"
         log.log(message, logfile)
         return
-    
-    #async for armed in drone.telemetry.armed():
-     #   if armed:
-      #      print("✅ Drone armed")
-       #     break
 
 
 async def default_takeoff(drone, target_altitude, logfile):
@@ -84,7 +81,7 @@ async def default_takeoff(drone, target_altitude, logfile):
         - Waits until target altitude (±0.5m) is reached
     """
 
-    #await drone.param.set_param_float("MPC_TKO_SPEED", 2.0) # 2 m/s
+    # await drone.param.set_param_float("MPC_TKO_SPEED", 2.0) # 2 m/s
     await drone.action.set_takeoff_altitude(target_altitude)
 
     log.log("Start Mission", logfile)
@@ -249,22 +246,22 @@ def pid_update(error, dt, state, kp, ki, kd, max_output=1.0):
     return max(-max_output, min(max_output, output)), state
 
 
-async def precision_land_velocity_pid_method(drone, vid, color, logfile):
+async def precision_land_velocity_pid_method(drone, vid, color, mission_id, logfile):
     """
     Precision Landing via velocity control using PID implemented as function.
     Landing occurs when height < 0.5 m.
     """
 
-    pid_params = {"kp": 0.8, "ki": 0.05, "kd": 0.1} # PID parameters
-    max_speed = 1.0 # m/s – max speed
-    descent_speed = 0.3  # m/s
-    landing_threshold = 0.5  # m
-    alignment_threshold = 0.2  # m threshold for alignment
-    dt = 0.1 # time step in seconds
+    pid_params = {"kp": 0.8, "ki": 0.05, "kd": 0.1}  # PID parameters
+    max_speed = 1.0  # m/s – max speed
+    descent_speed = 0.5  # m/s
+    landing_threshold = 4  # m
+    alignment_threshold = 0.5  # m threshold for alignment
+    dt = 0.1  # time step in seconds
 
     # Initialize PID states for north and east directions
     state_north = {"integral": 0.0, "prev_error": 0.0}
-    state_east  = {"integral": 0.0, "prev_error": 0.0}
+    state_east = {"integral": 0.0, "prev_error": 0.0}
 
     # 0. Start Offboard mode
     await drone.offboard.set_velocity_ned(VelocityNedYaw(0, 0, 0, 0))
@@ -284,7 +281,7 @@ async def precision_land_velocity_pid_method(drone, vid, color, logfile):
 
         if delta_north is None or delta_east is None:
             log.log("⚠️ No target detected. Stopping movement...", logfile)
-            
+
             # Set all velocities to 0 (Hover in place)
             await drone.offboard.set_velocity_ned(VelocityNedYaw(
                 north_m_s=0.0,
@@ -292,12 +289,14 @@ async def precision_land_velocity_pid_method(drone, vid, color, logfile):
                 down_m_s=0.0,
                 yaw_deg=0.0
             ))
-            
+
             await asyncio.sleep(dt)
             continue
 
-        v_north, state_north = pid_update(delta_north, dt, state_north, **pid_params, max_output=max_speed)
-        v_east,  state_east  = pid_update(delta_east, dt, state_east, **pid_params, max_output=max_speed)
+        v_north, state_north = pid_update(
+            delta_north, dt, state_north, **pid_params, max_output=max_speed)
+        v_east,  state_east = pid_update(
+            delta_east, dt, state_east, **pid_params, max_output=max_speed)
 
         # Set the velocity in NED coordinates (North, East, Down)
         await drone.offboard.set_velocity_ned(VelocityNedYaw(
@@ -307,14 +306,13 @@ async def precision_land_velocity_pid_method(drone, vid, color, logfile):
             yaw_deg=0.0
         ))
 
-        print(f"\r🟡 Aligning: vN={v_north:.2f}, vE={v_east:.2f} – ΔN={delta_north:.2f}, ΔE={delta_east:.2f}", end="")
+        print(
+            f"\r🟡 Aligning: vN={v_north:.2f}, vE={v_east:.2f} – ΔN={delta_north:.2f}, ΔE={delta_east:.2f}", end="")
 
         # Check if the drone is aligned within the threshold
         if abs(delta_north) < alignment_threshold and abs(delta_east) < alignment_threshold:
             log.log("✅ Alignment complete. Starting descent.\n", logfile)
             break
-
-        await asyncio.sleep(dt)
 
     # 2. Precision Landing phase with descent
     while True:
@@ -323,7 +321,7 @@ async def precision_land_velocity_pid_method(drone, vid, color, logfile):
 
         if delta_north is None or delta_east is None:
             log.log("⚠️ No target detected. Stopping movement...", logfile)
-            
+
             # Set all velocities to 0 (Hover in place)
             await drone.offboard.set_velocity_ned(VelocityNedYaw(
                 north_m_s=0.0,
@@ -331,12 +329,14 @@ async def precision_land_velocity_pid_method(drone, vid, color, logfile):
                 down_m_s=0.0,
                 yaw_deg=0.0
             ))
-            
+
             await asyncio.sleep(dt)
             continue
 
-        v_north, state_north = pid_update(delta_north, dt, state_north, **pid_params, max_output=max_speed)
-        v_east,  state_east  = pid_update(delta_east, dt, state_east, **pid_params, max_output=max_speed)
+        v_north, state_north = pid_update(
+            delta_north, dt, state_north, **pid_params, max_output=max_speed)
+        v_east,  state_east = pid_update(
+            delta_east, dt, state_east, **pid_params, max_output=max_speed)
 
         # Set the velocity in NED coordinates (North, East, Down)
         await drone.offboard.set_velocity_ned(VelocityNedYaw(
@@ -349,19 +349,23 @@ async def precision_land_velocity_pid_method(drone, vid, color, logfile):
         # Get the current altitude
         position = await drone.telemetry.position().__anext__()
         current_alt = position.relative_altitude_m
-        print(f"\r✈️ vN={v_north:.2f}, vE={v_east:.2f}, Alt={current_alt:.2f} m", end="")
+        print(
+            f"\r✈️ vN={v_north:.2f}, vE={v_east:.2f}, Alt={current_alt:.2f} m", end="")
 
         # Check if the drone is aligned within the landing threshold
         if current_alt < landing_threshold:
             log.log("\n✅ Altitude < 0.5 m → Landing\n", logfile)
-            await drone.action.land()
+
+            if mission_id == 2:
+                await default_land_and_disarm(drone, logfile)
+            elif mission_id == 3:
+                await drone.action.land()
+
             break
 
-        await asyncio.sleep(dt)
 
-
-def offset_coordinates(lat: float, lon: float, 
-                       north_m: float, east_m: float)-> tuple:
+def offset_coordinates(lat: float, lon: float,
+                       north_m: float, east_m: float) -> tuple:
     """
     calculates new GPS coordinates based on north/east offset (in meters).
     """
@@ -383,12 +387,12 @@ async def fly_spiral_search(
     """
     Performs a tight spiral search around a GPS center point
     Stops if the camera detects a target.
-    
+
     :return: True if a target is detected, otherwise False
     """
     max_radius = 10.0
     radius_step = 1
-    points_per_circle = 8
+    points_per_circle = 4
     radius = radius_step
     angle = 0.0
 
@@ -401,10 +405,11 @@ async def fly_spiral_search(
             offset_east = radius * math.sin(angle)
 
             # Konvertiere zu GPS
-            wp_lat, wp_lon = offset_coordinates(center_lat, center_lon, offset_north, offset_east)
+            wp_lat, wp_lon = offset_coordinates(
+                center_lat, center_lon, offset_north, offset_east)
 
             await goto_location(drone, wp_lat, wp_lon, target_altitude, logfile)
-            await asyncio.sleep(5)  # Wartezeit für Kamera
+            await asyncio.sleep(2)  # Wartezeit für Kamera
 
             # Chechk if the camera detects a target
             n_ned, e_ned = await ip.main_mission_2(drone, vid, color)
@@ -418,7 +423,7 @@ async def fly_spiral_search(
     log.log("❌ no target found in the tight spiral.", logfile)
     return False
 
-STATE_FILE = "mission1_state.json"
+
 def save_progress(index):
     with open(STATE_FILE, "w") as f:
         json.dump({"last_index": index}, f)

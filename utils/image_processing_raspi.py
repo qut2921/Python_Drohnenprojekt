@@ -5,7 +5,9 @@ It includes functions for capturing images, converting color spaces,
 locating objects based on color profiles, and saving images with telemetry data.
 Depending on the mission different functions are used to process the images."""
 
+import sys
 import os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 import time  # type:ignore
 import cv2  # type:ignore
 import numpy as np  # type:ignore
@@ -13,6 +15,7 @@ from picamera2 import Picamera2, Preview
 from picamera2.controls import Controls
 import asyncio
 import control.communicator as cm
+import control.logging as log
 
 
 def set_colorProfiles(n):
@@ -44,7 +47,7 @@ def set_colorProfiles(n):
         hsv_lower = (0, 100, 100)
         hsv_upper = (12, 255, 255)
         return (name, hsv_lower, hsv_upper)
-    
+
     if n == 4:
         name = "Orange"
         hsv_lower = (102, 0, 137)
@@ -97,7 +100,7 @@ def set_camera_controls3(vid):
     })
 
 
-def start_videoCapture(mission_id):
+def start_videoCapture(mission_id, logfile):
     """
     Set frame properties and start video capture.
     For mission 1 the camera is set to preview mode, while for mission 2 and 3
@@ -114,20 +117,24 @@ def start_videoCapture(mission_id):
     if mission_id == 1:
         config = vid.create_preview_configuration(main=set_sensor_properties())
         vid.configure(config)
-        #vid.start_preview(Preview.QTGL)
-        
+        # vid.start_preview(Preview.QTGL)
+        print("Preview configuration set")
 
     elif mission_id == 2 or mission_id == 3:
-        config = vid.create_video_configuration(main=set_sensor_properties())
+        config = vid.create_still_configuration(main=set_sensor_properties())
         vid.configure(config)
-        print
+        print("Still configuration set")
 
     else:
         raise ValueError("Invalid mission ID. Use 1, 2, or 3.")
 
     # Start camera with settings
-    vid.start()
-    print("Camera started")
+    try:
+        vid.start()
+        log.log("Camera started", logfile)
+    except Exception as e:
+        log.log(f"Error starting camera: {e}", logfile)
+        
 
     if mission_id == 1:
         # Set camera controls for mission 1
@@ -320,7 +327,6 @@ def locate_object_and_save(
     contours, _ = cv2.findContours(
         mask.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
 
-
     if contours:
         for cnt in contours:
             area = cv2.contourArea(cnt)
@@ -343,17 +349,16 @@ def locate_object_and_save(
                     long_position,
                     frame)
 
-                
                 # draw rectangle and text
                 frame = draw_rectangle_with_text(
-                        frame,
-                        name,
-                        x,
-                        y,
-                        w,
-                        h,
-                        x_distance,
-                        y_distance)
+                    frame,
+                    name,
+                    x,
+                    y,
+                    w,
+                    h,
+                    x_distance,
+                    y_distance)
 
                 with open(f"{output_dir}/image_processed.csv", "a") as processed_log_file:
                     processed_log_file.write(
@@ -363,12 +368,12 @@ def locate_object_and_save(
                     detectedObject = True
                     print(f"Object detected")
             else:
-                 # Reset flag if area is too small
+                # Reset flag if area is too small
                 detectedObject = False
     else:
-    # Reset flag if no contours are found	
-     detectedObject = False
-               
+        # Reset flag if no contours are found
+        detectedObject = False
+
     return frame
 
 
@@ -391,45 +396,42 @@ def locate_object(
     # find contours in the mask
     contours, _ = cv2.findContours(
         mask.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
-    
+
     e_ned = None
     n_ned = None
 
     if contours:
-        biggest = sorted(contours, key=cv2.contourArea, reverse=True)[0] 
+        biggest = sorted(contours, key=cv2.contourArea, reverse=True)[0]
         area = cv2.contourArea(biggest)
-        
+
         # Check if area is larger than minimum area
         if area >= min_area:
             x, y, w, h = cv2.boundingRect(biggest)
 
-                # calculate GPS coordinates
+            # calculate GPS coordinates
             _, _, _, _, n_ned, e_ned = calculate_gps(
-                    x,
-                    y,
-                    w,
-                    h,
-                    pitch,
-                    roll,
-                    altitude,
-                    heading,
-                    lat_position,
-                    long_position,
-                    frame)
+                x,
+                y,
+                w,
+                h,
+                pitch,
+                roll,
+                altitude,
+                heading,
+                lat_position,
+                long_position,
+                frame)
 
             if detectedObject == False:
-                    detectedObject = True
-                    print(f"Object detected")
-            
+                detectedObject = True
+                print(f"Object detected")
+
             return n_ned, e_ned
-                    
+
         else:
-             # Reset flag if area is too small
+            # Reset flag if area is too small
             detectedObject = False
-    else:
-        # Reset flag if no contours are found
-         detectedObject = False
-               
+
     return n_ned, e_ned
 
 
@@ -533,69 +535,55 @@ async def main_mission_1(drone, vid, sequence):
     # Initialize image saving variables
     new_dir = True
     last_time_saved = time.time()
+    camera_control_stamp = time.time()
     save_delay = 1  # Save image every 1 seconds
-    velocity = 2
+    hover_time = 45
 
-    while True:
+    while time.time() - camera_control_stamp >= hover_time:
 
         # Telemetry data that will come from the flight controller
-        latitude, longitude, altitude, roll, pitch, yaw, status, scalar_velocity, key = await cm.get_parameters_for_image_processing(drone)
+        latitude, longitude, altitude, roll, pitch, yaw, _, _, key = await cm.get_parameters_for_image_processing(drone)
 
         if key == 1:
             for i in range(10):
                 print("COMMUNICATION LOST!")
                 asyncio.sleep(0.5)
-            
+
             break
 
         # Check if new directory has to be created
-        if velocity < 10:
 
-            if new_dir == True:
-                output_dir = create_directory(sequence)
-                
-                set_camera_controls(vid)
-                camera_control_stamp = time.time()
-                
-                new_dir = False
-                image_count = 0  # Reset numbering for images in new directory
-                sequence += 1
+        if new_dir == True:
+            output_dir = create_directory(sequence)
+
+            set_camera_controls(vid)
+            new_dir = False
+            image_count = 0  # Reset numbering for images in new directory
+            sequence += 1
 
             # Only save image every 1 seconds in the directory with
             # neccesary telemetry data
-            if time.time() - last_time_saved >= save_delay:
-                image_filename = save_image(
-                    vid, 
-                    image_count, 
-                    output_dir, 
-                    sequence)
-                last_time_saved = time.time()
-                image_count += 1
-                with open(f"{output_dir}/image_saved.csv", "a") as log_file:
-                    log_file.write(
-                        f"{output_dir}, {image_filename}, {pitch}, {roll}, {altitude}, {yaw}, {latitude}, {longitude}\n")
-                print("Captured frame...")
-                
-            if time.time() - camera_control_stamp >= 15:
-                set_camera_controls2(vid)
-                print("Changed Camera Settings! Exposure:1000")
+        if time.time() - last_time_saved >= save_delay:
+            image_filename = save_image(
+                vid,
+                image_count,
+                output_dir,
+                sequence)
+            last_time_saved = time.time()
+            image_count += 1
+            with open(f"{output_dir}/image_saved.csv", "a") as log_file:
+                log_file.write(
+                    f"{output_dir}, {image_filename}, {pitch}, {roll}, {altitude}, {yaw}, {latitude}, {longitude}\n")
+            print("Captured frame...")
 
-            if time.time() - camera_control_stamp >= 30:
-                set_camera_controls3(vid)
-                print("Changed Camera Settings! Exposure:1500")
+        if time.time() - camera_control_stamp >= 15:
+            set_camera_controls2(vid)
+            print("Changed Camera Settings! Exposure:1000")
 
+        if time.time() - camera_control_stamp >= 30:
+            set_camera_controls3(vid)
+            print("Changed Camera Settings! Exposure:1500")
 
-            if time.time() - camera_control_stamp >=45:
-                return sequence
-                
-
-        else:
-            new_dir = True
-
-        if cv2.waitKey(1) & 0xFF == ord('q'):
-            break
-
-    vid.stop()
     return sequence
 
 
@@ -624,7 +612,7 @@ async def main_mission_2(drone, vid, colorProfile):
         yaw,
         latitude,
         longitude
-        )
+    )
 
     if n_ned or e_ned == None:
         print("No object found!")
