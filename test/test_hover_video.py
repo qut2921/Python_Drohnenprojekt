@@ -13,7 +13,7 @@ async def test_altitude():
     Makes the drone fly up and down between different altitudes.
     Sequence: 5 → 10 → 15 → 10 → 5 meters, then lands.
     """
-    altitudes = [2]
+    altitudes = 4.0
 
     #Start logging
     logfile = "hover_test.log"
@@ -51,35 +51,36 @@ async def test_altitude():
 
     # Start camera
     vid = ip.start_videoCapture(1)
-
-    # 6. Start photo capture
     log.log("Starting photo capture...", logfile)
+   
+   # 6. Start photo capture
     try:
-        asyncio.create_task(await ip.main_mission_1(drone, vid))
+        task = asyncio.create_task(ip.main_mission_1(drone, vid))
+        await task
+        
     except Exception as e:
         log.log(f"⚠️ Error starting photo capture: {e}", logfile)
     log.log("Photo capture started.", logfile)
 
     # 5  Take off to the first altitude
-    await cl.default_takeoff(drone, altitudes[0], logfile)
+    await cl.default_takeoff(drone, altitudes, logfile)
     await asyncio.sleep(2)
+
 
     # 6  Loop through the remaining altitudes
     home_position = await drone.telemetry.home().__anext__()
     latitude = home_position.latitude_deg
     longitude = home_position.longitude_deg
 
-    for target_alt in altitudes[1:]:
-        log.log(f"\n🔼 Changing altitude to {target_alt} meters")
-        await cl.goto_location(drone, latitude, longitude, target_alt)
 
-        # Hovers 5 seconds at each altitude
-        await drone.action.hold()
-        wait_time = 45
-        for remaining in range(wait_time, 0, -1):
+    log.log(f"\n🔼 Changing altitude to {altitudes} meters")
+    await cl.goto_location(drone, latitude, longitude, altitudes,logfile)
+        # Hovers 5 seconds at each altitude        await drone.action.hold()
+    wait_time = 45
+    for remaining in range(wait_time, 0, -1):
             print(f"\r⏳ Waiting... {remaining} s ", end="")
             await asyncio.sleep(1)
-        print("\r✅ Wait complete.")
+    print("\r✅ Wait complete.")
 
     # 6  Land
     await cl.default_land_and_disarm(drone, logfile)

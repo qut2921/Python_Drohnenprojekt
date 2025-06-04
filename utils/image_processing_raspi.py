@@ -47,8 +47,8 @@ def set_colorProfiles(n):
     
     if n == 4:
         name = "Orange"
-        hsv_lower = (0, 100, 100)
-        hsv_upper = (12, 255, 255)
+        hsv_lower = (102, 0, 137)
+        hsv_upper = (113, 255, 255)
         return (name, hsv_lower, hsv_upper)
 
 
@@ -131,6 +131,9 @@ def start_videoCapture(mission_id):
 
     if mission_id == 1:
         # Set camera controls for mission 1
+        set_camera_controls(vid)
+
+    if mission_id == 2:
         set_camera_controls(vid)
 
     return vid
@@ -518,7 +521,7 @@ def main_mission_1_post_processing(sequence, colorProfile, min_area):
             print("Captured frame...")
 
 
-async def main_mission_1(drone, vid):
+async def main_mission_1(drone, vid, sequence):
     """
     This is the concept for the image processing in Mission 1.
     The function just saves the image after specified time intervals and
@@ -531,7 +534,7 @@ async def main_mission_1(drone, vid):
     new_dir = True
     last_time_saved = time.time()
     save_delay = 1  # Save image every 1 seconds
-    sequence = 0
+    velocity = 2
 
     while True:
 
@@ -546,7 +549,7 @@ async def main_mission_1(drone, vid):
             break
 
         # Check if new directory has to be created
-        if scalar_velocity < 2:
+        if velocity < 10:
 
             if new_dir == True:
                 output_dir = create_directory(sequence)
@@ -566,6 +569,12 @@ async def main_mission_1(drone, vid):
                     image_count, 
                     output_dir, 
                     sequence)
+                last_time_saved = time.time()
+                image_count += 1
+                with open(f"{output_dir}/image_saved.csv", "a") as log_file:
+                    log_file.write(
+                        f"{output_dir}, {image_filename}, {pitch}, {roll}, {altitude}, {yaw}, {latitude}, {longitude}\n")
+                print("Captured frame...")
                 
             if time.time() - camera_control_stamp >= 15:
                 set_camera_controls2(vid)
@@ -575,13 +584,10 @@ async def main_mission_1(drone, vid):
                 set_camera_controls3(vid)
                 print("Changed Camera Settings! Exposure:1500")
 
-                last_time_saved = time.time()
-                image_count += 1
 
-                with open(f"{output_dir}/image_saved.csv", "a") as log_file:
-                    log_file.write(
-                        f"{output_dir}, {image_filename}, {pitch}, {roll}, {altitude}, {yaw}, {latitude}, {longitude}\n")
-                print("Captured frame...")
+            if time.time() - camera_control_stamp >=45:
+                return sequence
+                
 
         else:
             new_dir = True
@@ -595,7 +601,7 @@ async def main_mission_1(drone, vid):
 
 async def main_mission_2(drone, vid, colorProfile):
 
-    min_area = 900
+    min_area = 300
     detectedObject = False
 
     latitude, longitude, altitude, roll, pitch, yaw, status, scalar_velocity, key = await cm.get_parameters_for_image_processing(drone)

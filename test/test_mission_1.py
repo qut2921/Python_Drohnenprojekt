@@ -79,9 +79,9 @@ async def mission_1():
     home_lat = home.latitude_deg
     home_long = home.longitude_deg
     mission_locations = [
-        {48.76821, 11.33589},
-        {48.76813, 11.33609},
-        {48.76803, 11.33628},
+        {48.76756, 11.33704},
+        {48.76775, 11.33683},
+        {48.76781, 11.33669},
         {home_lat, home_long}
     ]
 
@@ -100,20 +100,12 @@ async def mission_1():
     # Start camera
     vid = ip.start_videoCapture(1)
 
-    # 6. Start photo capture
-    log.log("Starting photo capture...", logfile)
-    try:
-        asyncio.create_task(await ip.main_mission_1(drone, vid))
-    except Exception as e:
-        log.log(f"⚠️ Error starting photo capture: {e}", logfile)
-    log.log("Photo capture started.", logfile)
+    sequence = 0
 
     # 5. Take off to 5 meters
     target_altitude = 5.0
     await cl.default_takeoff(drone, target_altitude, logfile)
     await asyncio.sleep(1)
-
-
 
     # 7. Fly to each location
     start_index = cl.load_progress()
@@ -138,17 +130,15 @@ async def mission_1():
         cl.save_progress(i)    # Save progress after each location
         if i < len(mission_locations):
             # ⏳ Nur warten, wenn es NICHT der letzte Punkt ist
-            wait_time = 45
-            for remaining in range(wait_time, 0, -1):
-                print(f"\r⏳ Waiting... {remaining} s ", end="")
-                await asyncio.sleep(1)
-            print("\r✅ Wait complete.")
+           sequence = await ip.main_mission_1(drone, vid, sequence)
+            
         else:
             log.log("🏁 Final point reached – skipping wait, preparing to land.", logfile)
 
 
     # 8. Land and disarm (last gps location must be the finsh)
     await cl.default_land_and_disarm(drone, logfile)
+    vid.stop()
     cl.reset_progress()  # Reset progress after mission completion
 
 # Run mission 1
