@@ -28,6 +28,7 @@ async def mission_2():
     # Start logging
     logfile = "mission2.log"
     log.log("Mission 2 gestartet", logfile)
+    mission_id = 2
 
     #1. connect to the drone
     drone = await cl.connect_drone(logfile)
@@ -48,8 +49,12 @@ async def mission_2():
     #3. arm the drone and set location
     # arm the drone
     await cl.arm_drone(drone, logfile)
-    await asyncio.sleep(1)
 
+    # set home location
+    home = await drone.telemetry.home().__anext__()
+    home_latitude = home.latitude_deg
+    home_longitude = home.longitude_deg
+    
     # set location
     mission_locations = [(48.76786, 11.33668)] # target location
 
@@ -69,12 +74,12 @@ async def mission_2():
         else:
             print("⚠️ Please enter 'y' to start or 'n' to abort.")
 
-    #5. takeoff to 15 meters
+    #5. takeoff to 5 meters
     target_altitude = 5.0
     await cl.default_takeoff(drone, target_altitude, logfile)
     await asyncio.sleep(1)
 
-    #6. fly to location
+    #6. fly to location and climb to 15 meters
     target_altitude = 15.0
     latitude, longitude = mission_locations[0]
     log.log(
@@ -91,41 +96,26 @@ async def mission_2():
 
     n_ned, e_ned = await ip.main_mission_2(drone, vid, color) # orange target
     if n_ned is None or e_ned is None:
-        print("TARGET NOT FOUND")
+        log.log("TARGET NOT FOUND", logfile)
         bool = await cl.fly_spiral_search(drone, center_lat,
                                           center_lon, vid, color, target_altitude,
                                           logfile)
     else:
         bool = True
 
-    position = await drone.telemetry.position().__anext__()
-    center_lat = position.latitude_deg
-    center_lon = position.longitude_deg
-
-    n_ned, e_ned = await ip.main_mission_2(drone, vid, color) # oragne target
-    if n_ned is None or e_ned is None:
-        print("TARGET NOT FOUND")
-        bool = await cl.fly_spiral_search(drone, center_lat,
-                                          center_lon, vid, color,
-                                          target_altitude, logfile)
-    else:
-        bool = True
 
     if bool == False:
         #Return to land
         log.log("No target found, returning to home location.", logfile)
-        home = await drone.telemetry.home().__anext__()
-        latitude = home.latitude_deg
-        longitude = home.longitude_deg
         await cl.goto_location(drone,
-                               latitude,
-                               longitude,
+                               home_latitude,
+                               home_longitude,
                                target_altitude,
                                logfile)
         await cl.default_land_and_disarm(drone, logfile)
     else:    
         #8. precision land
-        await cl.precision_land_velocity_pid_method(drone, vid, color, logfile) # oragne target
+        await cl.precision_land_velocity_pid_method(drone, vid, color, mission_id, logfile) # oragne target
 
 
 asyncio.run(mission_2())
