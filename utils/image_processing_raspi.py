@@ -1,9 +1,10 @@
+"""This module provides functions for image processing within the drone.
+It is used with Raspberry Pi 5 and contains functions to set the camera
+controls for Camera Module 3. Also main functions for the missions are defined.
+
+A separate module is used for post-processing of the images that have been shot
+and saved along with the telemetry data.
 """
-This module contains functions for image processing using OpenCV and the 
-Picamera2 library.
-It includes functions for capturing images, converting color spaces,
-locating objects based on color profiles, and saving images with telemetry data.
-Depending on the mission different functions are used to process the images."""
 
 import sys
 import os
@@ -11,48 +12,13 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 import time  # type:ignore
 import cv2  # type:ignore
 import numpy as np  # type:ignore
-from picamera2 import Picamera2, Preview
+from picamera2 import Picamera2, Preview 
 from picamera2.controls import Controls
 import asyncio
 import control.communicator as cm
 import control.logging as log
+import utils.colors as colors
 
-
-def set_colorProfiles(n):
-    """Set color profiles for object detection.
-
-    n: 0: blue, 1: red, 2: yellow, 3: red2
-    """
-
-    if n == 0:
-        name = "Blau"
-        hsv_lower = (90, 50, 50)
-        hsv_upper = (130, 255, 255)
-        return (name, hsv_lower, hsv_upper)
-
-    if n == 1:
-        name = "Rot"
-        hsv_lower = (160, 100, 100)
-        hsv_upper = (180, 255, 255)
-        return (name, hsv_lower, hsv_upper)
-
-    if n == 2:
-        name = "Gelb"
-        hsv_lower = (15, 100, 100)
-        hsv_upper = (35, 255, 255)
-        return (name, hsv_lower, hsv_upper)
-
-    if n == 3:
-        name = "Rot2"
-        hsv_lower = (0, 100, 100)
-        hsv_upper = (12, 255, 255)
-        return (name, hsv_lower, hsv_upper)
-
-    if n == 4:
-        name = "Orange"
-        hsv_lower = (102, 0, 137)
-        hsv_upper = (113, 255, 255)
-        return (name, hsv_lower, hsv_upper)
 
 
 def set_sensor_properties():
@@ -161,24 +127,6 @@ def capture_and_convert(vid):
     return hsv, frame
 
 
-def read_image_and_convert(output_dir, image_name):
-    """
-    Read a frame from the video capture and convert it to HSV color space.
-    This function is used for post-processing of the images that have been shot
-    and saved along with the telemetry data. This function is used in mission 1
-    """
-
-    # Capture frame
-    frame = cv2.imread(output_dir + '/' + image_name)
-
-    # Sharpen image using unsharp masking
-    frame = unsharp_masking(frame)
-
-    # Convert frame to HSV color space
-    hsv = cv2.cvtColor(frame, cv2.COLOR_RGB2HSV)
-    return hsv, frame
-
-
 def calculate_gps(
         rect_x, rect_y, rect_w, rect_h,
         pitch, roll, altitude, heading,
@@ -240,152 +188,6 @@ def calculate_gps(
     return x_distance, y_distance, lat_object, lon_object, n_ned, e_ned
 
 
-def remove_noise(mask):
-    """Remove noise from the mask using morphological operations."""
-
-    kernel = np.ones((5, 5), np.uint8)
-
-    # Remove small dots
-    mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel)
-
-    # Fill small holes
-    mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)
-
-    return mask
-
-
-def unsharp_masking(image):
-    """Apply unsharp masking to enhance image details."""
-
-    # Create a Gaussian blur of the image
-    blurred = cv2.GaussianBlur(image, (9, 9), 10.0)
-
-    # Subtract the blurred image from the original image
-    sharpened = cv2.addWeighted(image, 1.5, blurred, -0.5, 0)
-
-    return sharpened
-
-
-def draw_rectangle_with_text(
-        frame, name, x, y, w, h,
-        x_distance, y_distance):
-    """
-    Draw a rectangle around the detected object and add text with its coordinates.
-    If the text goes out of bounds, adjust its position and color.
-    """
-
-    # Set text properties
-    font = cv2.FONT_HERSHEY_SIMPLEX
-    scale = 0.6
-    thickness = 1
-    text_colour = (0, 0, 255)  # Red
-
-    # Write text and get width and size
-    text = f"{name} ({x}, {y}) ({x_distance:.2f} m, {y_distance:.2f} m)"
-    (text_width, text_height), _ = cv2.getTextSize(text, font, scale, thickness)
-
-    # Set default text position
-    text_x = x
-    text_y = y - 10
-
-    # Adjust text position if it goes out of bounds
-    if text_x + text_width > frame.shape[1]:
-        text_x = frame.shape[1] - text_width - 10
-        text_colour = (255, 0, 0)  # blue
-
-    if text_y - text_height < 0:
-        text_y = y + h + text_height + 5
-        text_colour = (255, 0, 0)  # blue
-
-    # Draw rectangle and text
-    cv2.rectangle(frame, (x, y), (x+w, y+h), (0, 255, 255), 2)
-    cv2.putText(
-        frame, text, (text_x, text_y),
-        font, scale, text_colour, thickness)
-
-    return frame
-
-
-def locate_object_and_save(
-        output_dir, image_filename,
-        colorProfile, hsv,
-        frame, min_area, detectedObject,
-        pitch, roll, altitude, heading, lat_position, long_position):
-    """
-    Locate the object in the frame based on the specified color profile.
-    This function is used for post-processing of the images that have been shot
-    and saved along with the telemetry data. This function is used in mission1.
-    """
-    # mask for the specified color profile
-    if colorProfile == 1:
-        name1, lower_red1, upper_red1 = set_colorProfiles(1)
-        name2, lower_red2, upper_red2 = set_colorProfiles(3)
-        mask1 = cv2.inRange(hsv, lower_red1, upper_red1)
-        mask2 = cv2.inRange(hsv, lower_red2, upper_red2)
-        mask = cv2.bitwise_or(mask1, mask2)
-        mask = cv2.threshold(mask, 127, 255, cv2.THRESH_BINARY)[1]
-    
-    else:
-        name, hsv_lower, hsv_upper = set_colorProfiles(colorProfile)
-        mask = cv2.inRange(hsv, hsv_lower, hsv_upper)
-
-    # remove noise from mask
-    # mask = remove_noise(mask)
-
-    # find contours in the mask
-    contours, _ = cv2.findContours(
-        mask.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
-
-    if contours:
-        for cnt in contours:
-            area = cv2.contourArea(cnt)
-
-            # Check if area is larger than minimum area
-            if area >= min_area:
-                x, y, w, h = cv2.boundingRect(cnt)
-
-                # calculate GPS coordinates
-                x_distance, y_distance, lat_object, long_object, n_ned, e_ned = calculate_gps(
-                    x,
-                    y,
-                    w,
-                    h,
-                    pitch,
-                    roll,
-                    altitude,
-                    heading,
-                    lat_position,
-                    long_position,
-                    frame)
-
-                # draw rectangle and text
-                frame = draw_rectangle_with_text(
-                    frame,
-                    name,
-                    x,
-                    y,
-                    w,
-                    h,
-                    x_distance,
-                    y_distance)
-
-                with open(f"{output_dir}/image_processed.csv", "a") as processed_log_file:
-                    processed_log_file.write(
-                        f"{output_dir}, {image_filename}, {x_distance}, {y_distance}, {lat_object}, {long_object}\n")
-
-                if detectedObject == False:
-                    detectedObject = True
-                    print(f"Object detected")
-            else:
-                # Reset flag if area is too small
-                detectedObject = False
-    else:
-        # Reset flag if no contours are found
-        detectedObject = False
-
-    return frame
-
-
 def locate_object(
         colorProfile, hsv,
         frame, min_area, detectedObject,
@@ -396,7 +198,7 @@ def locate_object(
     and saved along with the telemetry data. This function is used in mission1.
     """
     # mask for the specified color profile
-    _, hsv_lower, hsv_upper = set_colorProfiles(colorProfile)
+    _, hsv_lower, hsv_upper = colors.set_colorProfiles(colorProfile)
     mask = cv2.inRange(hsv, hsv_lower, hsv_upper)
 
     # remove noise from mask
@@ -471,68 +273,6 @@ def save_image(vid, frame_amount, output_dir, sequence):
     print("Captured frame...")
 
     return image_filename
-
-
-def test_velocity():
-    """
-    Test function to simulate velocity. This function was used to test the 
-    functionality of the main modules. It is used to simulate varying velocities.
-    A sine function is used to simulate the velocity.
-    """
-    velocity = 6*np.abs(np.sin(time.time()/4)) + 2  # [m/s]
-    print(f"Velocity: {velocity:.2f} m/s")
-
-    return velocity
-
-
-def main_mission_1_post_processing(sequence, colorProfile, min_area):
-    """
-    After acquiring the images, this function processes and locates
-    the object by reading the CSV files. In case an object is located, a 
-    second CSV files with the GPS object coordinates is created.
-    """
-
-    # Read the CSV file with telemetry data
-    for i in range(sequence):
-        with open(f"/media/aviator/INTENSO/BildsequenzTest_{i}/image_saved.csv", "r") as log_file:
-            lines = log_file.readlines()
-
-        # Process each line in the CSV file
-        for line in lines:
-            # Split the line at ", "" to extract data
-            output_dir, image_filename, pitch, roll, altitude, heading, lat_position, long_position = line.strip().split(", ")
-
-            # Convert into float values
-            pitch, roll, altitude, heading, lat_position, long_position = float(pitch), float(
-                roll), float(altitude), float(heading), float(lat_position), float(long_position)
-            
-            base_path = '/media/aviator/INTENSO/'
-            output_dir = output_dir.replace(base_path, '')
-
-            # Read the image and convert it to HSV color space
-            hsv, frame = read_image_and_convert(output_dir, image_filename)
-            detectedObject = False
-
-            # Locate the object and save locations in CSV file
-            frame = locate_object_and_save(
-                output_dir,
-                image_filename,
-                colorProfile,
-                hsv,
-                frame,
-                min_area,
-                detectedObject,
-                pitch,
-                roll,
-                altitude,
-                heading,
-                lat_position,
-                long_position
-            )
-
-            # Save the processed image
-            cv2.imwrite(output_dir + '/processed_' + image_filename, frame)
-            print("Captured frame...")
 
 
 async def main_mission_1(drone, vid, sequence):
