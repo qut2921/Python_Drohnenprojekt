@@ -1,0 +1,285 @@
+"""This module is used for post-processing of the images that have been shot
+and saved along with the telemetry data. It includes functions to read images,
+locate objects, and save processed images. It is used on the ground computer.
+"""
+import numpy as np
+import cv2
+import utils.colors as colors
+import sys
+import os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+
+
+def read_image_and_convert(output_dir, image_name):
+    """
+    Read a frame from the video capture and convert it to HSV color space.
+    This function is used for post-processing of the images that have been shot
+    and saved along with the telemetry data. This function is used in mission 1
+    """
+
+    # Capture frame
+    frame = cv2.imread(output_dir + '/' + image_name)
+
+    # Sharpen image using unsharp masking
+    frame = unsharp_masking(frame)
+
+    # Convert frame to HSV color space
+    hsv = cv2.cvtColor(frame, cv2.COLOR_RGB2HSV)
+    return hsv, frame
+
+
+def unsharp_masking(image):
+    """Apply unsharp masking to enhance image details."""
+
+    # Create a Gaussian blur of the image
+    blurred = cv2.GaussianBlur(image, (9, 9), 10.0)
+
+    # Subtract the blurred image from the original image
+    sharpened = cv2.addWeighted(image, 1.5, blurred, -0.5, 0)
+
+    return sharpened
+
+
+def locate_object_and_save(
+        output_dir, image_filename,
+        colorProfile, hsv,
+        frame, min_area, detectedObject,
+        pitch, roll, altitude, heading, lat_position, long_position):
+    """
+    Locate the object in the frame based on the specified color profile.
+    This function is used for post-processing of the images that have been shot
+    and saved along with the telemetry data. This function is used in mission1.
+    """
+    # mask for the specified color profile
+    if colorProfile == 1:
+        name, lower_red1, upper_red1 = colors.set_colorProfiles(1)
+        name, lower_red2, upper_red2 = colors.set_colorProfiles(3)
+        mask1 = cv2.inRange(hsv, lower_red1, upper_red1)
+        mask2 = cv2.inRange(hsv, lower_red2, upper_red2)
+        mask = cv2.bitwise_or(mask1, mask2)
+        mask = cv2.threshold(mask, 127, 255, cv2.THRESH_BINARY)[1]
+
+    else:
+        name, hsv_lower, hsv_upper = colors.set_colorProfiles(colorProfile)
+        mask = cv2.inRange(hsv, hsv_lower, hsv_upper)
+
+    # remove noise from mask
+    # mask = remove_noise(mask)
+
+    # find contours in the mask
+    contours, _ = cv2.findContours(
+        mask.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+
+    if contours:
+        for cnt in contours:
+            area = cv2.contourArea(cnt)
+
+            # Check if area is larger than minimum area
+            if area >= min_area:
+                x, y, w, h = cv2.boundingRect(cnt)
+
+                # calculate GPS coordinates
+                x_distance, y_distance, lat_object, long_object, n_ned, e_ned = calculate_gps_processor(
+                    x,
+                    y,
+                    w,
+                    h,
+                    pitch,
+                    roll,
+                    altitude,
+                    heading,
+                    lat_position,
+                    long_position,
+                    frame)
+
+                # draw rectangle and text
+                frame = draw_rectangle_with_text(
+                    frame,
+                    name,
+                    x,
+                    y,
+                    w,
+                    h,
+                    x_distance,
+                    y_distance)
+
+                with open(f"{output_dir}/image_processed.csv", "a") as processed_log_file:
+                    processed_log_file.write(
+                        f"{output_dir}, {image_filename}, {n_ned}, {e_ned}, {lat_object}, {long_object}\n")
+
+                if detectedObject == False:
+                    detectedObject = True
+                    print(f"Object detected")
+            else:
+                # Reset flag if area is too small
+                detectedObject = False
+    else:
+        # Reset flag if no contours are found
+        detectedObject = False
+
+    return frame
+
+
+def calculate_gps_processor(
+        rect_x, rect_y, rect_w, rect_h,
+        pitch, roll, altitude, heading,
+        lat_position, long_position, frame):
+    """Calculate GPS coordinates based on the rectangle position and telemetry data.
+
+    rect_x, rect_y: coordinates of the rectangle
+
+    rect_w, rect_h: width and height of the rectangle
+
+    pitch, roll: telemetry data for pitch and roll
+
+    altitude: telemetry data for altitude
+
+    heading_: telemetry data for heading
+
+    lat_position: current GPS position
+
+    long_position: current GPS position
+
+    frame: current frame from the video capture
+    """
+
+    # Get rectangle center coordinates
+    pixel_x = rect_x + (rect_w / 2)  # [pixel]
+    pixel_y = rect_y + (rect_h / 2)  # [pixel]
+
+    # Camera sensor properties
+    FOV_horizontal = 66  # [degrees]
+    FOV_vertical = 41  # [degrees]
+
+    # Get frame dimensions
+    frame_height, frame_width = frame.shape[:2]
+
+    # Calculate trigonometric angles to calculate distances
+    delta = FOV_horizontal * \
+        ((pixel_x / frame_width) - 0.5) + pitch  # [degrees]
+    epsilon = FOV_vertical * \
+        ((pixel_y / frame_height) - 0.5) - roll  # [degrees]
+
+    # Calculate distances in frame coordinate system
+    x_distance = altitude * np.tan(np.radians(delta))  # [m]
+    y_distance = altitude * np.tan(np.radians(epsilon))  # [m]
+
+    # Transform to NED coordinate system by rotating the frame around heading
+    # Calculate distances in NED coordinate system
+    n_ned = x_distance * np.cos(np.radians(heading)) - \
+        y_distance * np.sin(np.radians(heading))  # [m]
+    e_ned = x_distance * np.sin(np.radians(heading)) + \
+        y_distance * np.cos(np.radians(heading))  # [m]
+
+    # Calculate GPS coordinates for small distances https://kompf.de/gps/distcalc.html
+    delta_lat = n_ned / 111320  # [degrees]
+    delta_lon = e_ned / \
+        (111320 * np.cos(np.radians(lat_position)))  # [degrees]
+    lat_object = lat_position + delta_lat  # [degrees]
+    lon_object = long_position + delta_lon  # [degrees]
+
+    return x_distance, y_distance, lat_object, lon_object, n_ned, e_ned
+
+
+def draw_rectangle_with_text(
+        frame, name, x, y, w, h,
+        x_distance, y_distance):
+    """
+    Draw a rectangle around the detected object and add text with its coordinates.
+    If the text goes out of bounds, adjust its position and color.
+    """
+
+    # Set text properties
+    font = cv2.FONT_HERSHEY_SIMPLEX
+    scale = 0.6
+    thickness = 1
+    text_colour = (0, 0, 255)  # Red
+
+    # Write text and get width and size
+    text = f"{name} ({x}, {y}) ({x_distance:.2f} m, {y_distance:.2f} m)"
+    (text_width, text_height), _ = cv2.getTextSize(text, font, scale, thickness)
+
+    # Set default text position
+    text_x = x
+    text_y = y - 10
+
+    # Adjust text position if it goes out of bounds
+    if text_x + text_width > frame.shape[1]:
+        text_x = frame.shape[1] - text_width - 10
+        text_colour = (255, 0, 0)  # blue
+
+    if text_y - text_height < 0:
+        text_y = y + h + text_height + 5
+        text_colour = (255, 0, 0)  # blue
+
+    # Draw rectangle and text
+    cv2.rectangle(frame, (x, y), (x+w, y+h), (0, 255, 255), 2)
+    cv2.putText(
+        frame, text, (text_x, text_y),
+        font, scale, text_colour, thickness)
+
+    return frame
+
+
+def remove_noise(mask):
+    """Remove noise from the mask using morphological operations."""
+
+    kernel = np.ones((5, 5), np.uint8)
+
+    # Remove small dots
+    mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel)
+
+    # Fill small holes
+    mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)
+
+    return mask
+
+
+def main_mission_1_post_processing(sequence, colorProfile, min_area):
+    """
+    After acquiring the images, this function processes and locates
+    the object by reading the CSV files. In case an object is located, a 
+    second CSV files with the GPS object coordinates is created.
+    """
+
+    # Read the CSV file with telemetry data
+    for i in range(sequence):
+        with open(f"BildsequenzTest_{i}/image_saved.csv", "r") as log_file:
+            lines = log_file.readlines()
+
+        # Process each line in the CSV file
+        for line in lines:
+            # Split the line at ", "" to extract data
+            output_dir, image_filename, pitch, roll, altitude, heading, lat_position, long_position = line.strip().split(", ")
+
+            # Convert into float values
+            pitch, roll, altitude, heading, lat_position, long_position = float(pitch), float(
+                roll), float(altitude), float(heading), float(lat_position), float(long_position)
+
+            base_path = '/media/aviator/INTENSO/'
+            output_dir = output_dir.replace(base_path, '')
+
+            # Read the image and convert it to HSV color space
+            hsv, frame = read_image_and_convert(output_dir, image_filename)
+            detectedObject = False
+
+            # Locate the object and save locations in CSV file
+            frame = locate_object_and_save(
+                output_dir,
+                image_filename,
+                colorProfile,
+                hsv,
+                frame,
+                min_area,
+                detectedObject,
+                pitch,
+                roll,
+                altitude,
+                heading,
+                lat_position,
+                long_position
+            )
+
+            # Save the processed image
+            cv2.imwrite(output_dir + '/processed_' + image_filename, frame)
+            print("Captured frame...")
