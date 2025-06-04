@@ -51,7 +51,7 @@ async def mission_2():
     await asyncio.sleep(1)
 
     # set location
-    mission_locations = [(48.76758, 11.33717)] # target location
+    mission_locations = [(48.76786, 11.33668)] # target location
 
     # Start camera
     vid = ip.start_videoCapture(2)
@@ -91,6 +91,7 @@ async def mission_2():
 
     n_ned, e_ned = await ip.main_mission_2(drone, vid, color) # orange target
     if n_ned is None or e_ned is None:
+        print("TARGET NOT FOUND")
         bool = await cl.fly_spiral_search(drone, center_lat,
                                           center_lon, vid, color, target_altitude,
                                           logfile)
@@ -103,6 +104,7 @@ async def mission_2():
 
     n_ned, e_ned = await ip.main_mission_2(drone, vid, color) # oragne target
     if n_ned is None or e_ned is None:
+        print("TARGET NOT FOUND")
         bool = await cl.fly_spiral_search(drone, center_lat,
                                           center_lon, vid, color,
                                           target_altitude, logfile)
@@ -124,3 +126,6 @@ async def mission_2():
     else:    
         #8. precision land
         await cl.precision_land_velocity_pid_method(drone, vid, color, logfile) # oragne target
+
+
+asyncio.run(mission_2())

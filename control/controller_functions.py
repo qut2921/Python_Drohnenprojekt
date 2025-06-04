@@ -386,8 +386,8 @@ async def fly_spiral_search(
     
     :return: True if a target is detected, otherwise False
     """
-    max_radius = 3.0
-    radius_step = 0.5
+    max_radius = 10.0
+    radius_step = 1
     points_per_circle = 8
     radius = radius_step
     angle = 0.0
@@ -403,7 +403,7 @@ async def fly_spiral_search(
             # Konvertiere zu GPS
             wp_lat, wp_lon = offset_coordinates(center_lat, center_lon, offset_north, offset_east)
 
-            await goto_location(drone, wp_lat, wp_lon, target_altitude)
+            await goto_location(drone, wp_lat, wp_lon, target_altitude, logfile)
             await asyncio.sleep(5)  # Wartezeit für Kamera
 
             # Chechk if the camera detects a target
