@@ -30,31 +30,7 @@ async def mission_1():
     # 1. Connect to the drone
     drone = await cl.connect_drone(logfile)
 
-    # 2. User confirmation before arming
-    while True:
-        STATE_FILE = "mission1_state.json"
-        if not os.path.exists(STATE_FILE):
-            user_input = input(
-                "🚦 Ready to arm the drone? (y/n): ").strip().lower()
-            if user_input == "y":
-                break
-            elif user_input == "n":
-                print("❌ Mission aborted by user.")
-                exit(0)
-            else:
-                print("⚠️ Please enter 'y' to start or 'n' to abort.")
-        else:
-            user_input = input(
-                "🚦 Ready to arm the drone to restart mission 1? (y/n): ").strip().lower()
-            if user_input == "y":
-                break
-            elif user_input == "n":
-                print("❌ Mission aborted by user.")
-                exit(0)
-            else:
-                print("⚠️ Please enter 'y' to start or 'n' to abort.")
-
-    # 3. Arm and Mission locations
+    # 2. Arm and Mission locations
     # Arm the drone
     await cl.arm_drone(drone, logfile)
 
@@ -69,28 +45,16 @@ async def mission_1():
         {home_lat, home_long}
     ]
 
-    # 4. User confirmation before takeoff
-    while True:
-        user_input = input(
-            "🚦 Ready to takeoff? (y/n): ").strip().lower()
-        if user_input == "y":
-            break
-        elif user_input == "n":
-            print("❌ Mission aborted by user.")
-            exit(0)
-        else:
-            print("⚠️ Please enter 'y' to start or 'n' to abort.")
-
-    # 5. Start camera
+    # 3. Start camera
     vid = ip.start_videoCapture(1, logfile)
     sequence = 0
 
-    # 6. Take off to 5 meters
+    # 4. Take off to 5 meters
     target_altitude = 5.0
     await cl.default_takeoff(drone, target_altitude, logfile)
     await asyncio.sleep(1)
 
-    # 7. Fly to each location
+    # 5. Fly to each location
     start_index = cl.load_progress()
     target_altitude = 15.0  # Set target altitude for the mission
     # lat und long muss bei Hanna umgedreht werden (longitude, latitude)
@@ -119,7 +83,7 @@ async def mission_1():
             log.log("🏁 Final point reached – skipping wait, preparing to land.", logfile)
 
 
-    # 8. Land and disarm (last gps location must be the finsh)
+    # 6. Land and disarm (last gps location must be the finsh)
     await cl.default_land_and_disarm(drone, logfile)
     vid.stop()
     cl.reset_progress()  # Reset progress after mission completion
