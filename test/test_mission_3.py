@@ -11,9 +11,6 @@ import math
 from mavsdk import system
 
 async def mission_3():
-    
-
-
     """
     1. connect to the drone
     2. user confirmation before arming
@@ -26,27 +23,15 @@ async def mission_3():
     13. landing (at final location)
 
     """
-    #0. Start logging
+    # Start logging
     logfile = "mission3.log"
     log.log("Mission 3 gestartet", logfile)
 
 
-    #1. connect to the drone
+    # 1. connect to the drone
     drone = await cl.connect_drone(logfile)
 
-    #2. user confirmation before arming
-    while True:
-        user_input = input(
-            "🚦 Ready to arm the drone? (y/n): ").strip().lower()
-        if user_input == "y":
-            break
-        elif user_input == "n":
-            print("❌ Mission aborted by user.")
-            exit(0)
-        else:
-            print("⚠️ Please enter 'y' to start or 'n' to abort.")
-
-    #3. arm the drone and set location
+    # 2. arm the drone and set location
     # arm the drone  
     await cl.arm_drone(drone, logfile)
     await asyncio.sleep(1)
@@ -55,27 +40,15 @@ async def mission_3():
     mission_locations = [(48.76758, 11.33717, 0),   # blue target location
                          (48.76750, 11.33720, 2)]   # yellow target location
 
-    # Start camera
+    # 3. Start camera
     vid = ip.start_videoCapture(2)
 
-    #4. user confirmation before takeoff
-    while True:
-        user_input = input(
-            "🚦 Ready to takeoff? (y/n): ").strip().lower()
-        if user_input == "y":
-            break
-        elif user_input == "n":
-            print("❌ Mission aborted by user.")
-            exit(0)
-        else:
-            print("⚠️ Please enter 'y' to start or 'n' to abort.")
-
-    #5. takeoff to 15 meters
+    # 4. takeoff to 15 meters
     target_altitude = 15.0
     await cl.default_takeoff(drone, target_altitude, logfile)
     await asyncio.sleep(1)
 
-    #6. fly to location
+    # 5. fly to location
     start_index = cl.load_progress()
     # lat und long muss bei Hanna umgedreht werden (longitude, latitude)
     for i, (latitude, longitude, color) in enumerate(mission_locations, start=1):
@@ -108,7 +81,7 @@ async def mission_3():
             log.log("✅ All locations completed.", logfile)
             break
 
-    #13. landing 
+    # 6. landing 
     await cl.default_land_and_disarm(drone, logfile)
     
 

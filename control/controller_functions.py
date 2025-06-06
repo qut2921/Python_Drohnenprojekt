@@ -7,7 +7,7 @@ import control.logging as log
 import control.error_message as em
 import math
 from mavsdk.telemetry import LandedState
-import utils.image_processing_raspi as ip
+#import utils.image_processing_raspi as ip
 from mavsdk.offboard import PositionNedYaw
 from mavsdk.offboard import VelocityNedYaw
 from mavsdk import System
@@ -83,8 +83,6 @@ async def default_takeoff(drone, target_altitude, logfile):
 
     # await drone.param.set_param_float("MPC_TKO_SPEED", 2.0) # 2 m/s
     await drone.action.set_takeoff_altitude(target_altitude)
-
-    log.log("Start Mission", logfile)
 
     log.log(f"🟣 Taking off to {target_altitude} m", logfile)
     try:

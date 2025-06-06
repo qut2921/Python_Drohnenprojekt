@@ -2,16 +2,13 @@ import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 import control.controller_functions as cl 
-import utils.image_processing as image_processing
 import utils.image_processing_raspi as ip
 import control.logging as log
 import asyncio
 import math
 from mavsdk import system
 
-async def mission_2():
-
-    
+async def mission_2(): 
     """
     1. connect to the drone
     2. user confirmation before arming
@@ -30,23 +27,10 @@ async def mission_2():
     log.log("Mission 2 gestartet", logfile)
     mission_id = 2
 
-    #1. connect to the drone
+    # 1. connect to the drone
     drone = await cl.connect_drone(logfile)
-
-    #2. user confirmation before arming
-    while True:
-        user_input = input(
-            "🚦 Ready to arm the drone? (y/n): ").strip().lower()
-        if user_input == "y":
-            break
-        elif user_input == "n":
-            print("❌ Mission aborted by user.")
-            exit(0)
-        else:
-            print("⚠️ Please enter 'y' to start or 'n' to abort.")
-
     
-    #3. arm the drone and set location
+    # 2. arm the drone and set location
     # arm the drone
     await cl.arm_drone(drone, logfile)
 
@@ -58,28 +42,16 @@ async def mission_2():
     # set location
     mission_locations = [(48.76786, 11.33668)] # target location
 
-    # Start camera
+    # 3. Start camera
     vid = ip.start_videoCapture(2)
     color = 4  # orange target
 
-    #4. user confirmation before takeoff
-    while True:
-        user_input = input(
-            "🚦 Ready to takeoff? (y/n): ").strip().lower()
-        if user_input == "y":
-            break
-        elif user_input == "n":
-            print("❌ Mission aborted by user.")
-            exit(0)
-        else:
-            print("⚠️ Please enter 'y' to start or 'n' to abort.")
-
-    #5. takeoff to 5 meters
+    # 4. takeoff to 5 meters
     target_altitude = 5.0
     await cl.default_takeoff(drone, target_altitude, logfile)
     await asyncio.sleep(1)
 
-    #6. fly to location and climb to 15 meters
+    # 5. fly to location and climb to 15 meters
     target_altitude = 15.0
     latitude, longitude = mission_locations[0]
     log.log(
@@ -89,7 +61,7 @@ async def mission_2():
     await cl.goto_location(drone, latitude, longitude, target_altitude, logfile)
     await drone.action.hold()
 
-    #7. if no target detected: fly spiral search 
+    # 6. if no target detected: fly spiral search 
     position = await drone.telemetry.position().__anext__()
     center_lat = position.latitude_deg
     center_lon = position.longitude_deg
