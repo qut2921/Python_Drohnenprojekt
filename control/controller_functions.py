@@ -7,7 +7,7 @@ import control.logging as log
 import control.error_message as em
 import math
 from mavsdk.telemetry import LandedState
-#import utils.image_processing_raspi as ip
+import utils.image_processing_raspi as ip
 from mavsdk.offboard import PositionNedYaw
 from mavsdk.offboard import VelocityNedYaw
 from mavsdk import System
