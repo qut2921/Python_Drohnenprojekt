@@ -1,3 +1,6 @@
+"""This module contains a function to calculate GPS coordinates based on
+the position of the rectangle that is bounding the detected object.
+"""
 import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
