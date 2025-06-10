@@ -24,7 +24,7 @@ async def mission_1():
         8. Land and disarm at home location
     """
     # Start logging
-    logfile = "test_mission1.log"
+    logfile = "test_mission1_einfach.log"
     log.log("Mission 1 test gestartet", logfile)
 
     # 1. Connect to the drone
@@ -51,11 +51,16 @@ async def mission_1():
 
     await cl.default_takeoff(drone, 0.0, logfile)
     await drone.action.hold()
+    log.log("Takeoff abgeschlossen", logfile)
 
     sequence = await ip.main_mission_1(drone, vid, sequence)
 
     # disarm the drone
     await drone.action.disarm()
+    log.log("Drohne disarmed", logfile)
+   
+    # Stop video capture
+    ip.stop_videoCapture(vid, logfile)
     
 # Run mission 1
 asyncio.run(mission_1())
