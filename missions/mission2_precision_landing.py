@@ -1,4 +1,17 @@
-def run(landingPosition, targetType, geofence=None):
+import sys
+import os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+import control.controller_functions as cl 
+import utils.image_processing_raspi as ip
+import control.logging as log
+import asyncio
+import math
+from mavsdk import system
+
+landingqPosition = (48.76786, 11.33668)  # Example landing position
+targetType = 4  # Example target type (e.g., orange target)
+
+async def run(landingPosition, targetType, geofence=None):
     # Hier könnte der Code für die Ausführung der Mission 2 stehen
     print(f"Mission 2 gestartet mit Landeposition: {landingPosition}, Zieltyp: {targetType}")
     if geofence:
@@ -6,3 +19,87 @@ def run(landingPosition, targetType, geofence=None):
     else:
         print("Kein Geofence aktiviert")
     pass
+
+    """
+    1. connect to the drone
+    2. user confirmation before arming
+    3. arm the drone and set location
+    4. user confirmation before takeoff
+    5. takeoff to 15 meters
+    6. fly to location
+    7. check camera for target
+    7a. if target detected: activate precision land
+    8. no target detected: fly spiral search 
+    8a. precision land
+
+    """
+    # Start logging
+    logfile = "mission2.log"
+    log.log("Mission 2 gestartet", logfile)
+    mission_id = 2
+
+    # 1. connect to the drone
+    drone = await cl.connect_drone(logfile)
+    
+    # 2. arm the drone and set location
+    # arm the drone
+    await cl.arm_drone(drone, logfile)
+
+    # set home location
+    home = await drone.telemetry.home().__anext__()
+    home_latitude = home.latitude_deg
+    home_longitude = home.longitude_deg
+    
+    # set location
+    latitude, longitude = landingPosition  # target location
+    mission_locations = [(latitude, longitude)] # target location
+
+    # 3. Start camera
+    vid = ip.start_videoCapture(2)
+    color = targetType  # orange target
+
+    # 4. takeoff to 5 meters
+    target_altitude = 5.0
+    await cl.default_takeoff(drone, target_altitude, logfile)
+    await asyncio.sleep(1)
+
+    # 5. fly to location and climb to 15 meters
+    target_altitude = 15.0
+    latitude, longitude = mission_locations[0]
+    log.log(
+            f"🟣 Flying to single location: "
+            f"{latitude}, {longitude}, {target_altitude} m", logfile
+        )
+    await cl.goto_location(drone, latitude, longitude, target_altitude, logfile)
+    await drone.action.hold()
+
+    # 6. if no target detected: fly spiral search 
+    position = await drone.telemetry.position().__anext__()
+    center_lat = position.latitude_deg
+    center_lon = position.longitude_deg
+
+    n_ned, e_ned = await ip.main_mission_2(drone, vid, color) # orange target
+    if n_ned is None or e_ned is None:
+        log.log("TARGET NOT FOUND", logfile)
+        bool = await cl.fly_spiral_search(drone, center_lat,
+                                          center_lon, vid, color, target_altitude,
+                                          logfile)
+    else:
+        bool = True
+
+
+    if bool == False:
+        #Return to land
+        log.log("No target found, returning to home location.", logfile)
+        await cl.goto_location(drone,
+                               home_latitude,
+                               home_longitude,
+                               target_altitude,
+                               logfile)
+        await cl.default_land_and_disarm(drone, logfile)
+    else:    
+        #8. precision land
+        await cl.precision_land_velocity_pid_method(drone, vid, color, mission_id, logfile) # oragne target
+
+
+asyncio.run(mission_2())

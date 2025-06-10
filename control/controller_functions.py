@@ -93,11 +93,14 @@ async def default_takeoff(drone, target_altitude, logfile):
         return
     log.log("🔄 Taking off...", logfile)
     # Waits until the drone reaches the target altitude
-    async for position in drone.telemetry.position():
-        current_height = position.relative_altitude_m
-        print(f"\r⬆️ Current height: {current_height:.1f} m", end="")
-        if abs(current_height - target_altitude) < 0.1:
-            log.log("\n✅ Target altitude reached\n", logfile)
+    while True:
+        position = await drone.telemetry.position().__anext__()
+        current_alt = position.relative_altitude_m
+        print(f"\r⬆️ Current height: {current_alt:.1f} m", end="")
+        
+        # Optional: akzeptiere mehr Toleranz bei Wiederstart
+        if abs(current_alt - target_altitude) < 0.2:
+            print("\n✅ Target altitude reached")
             break
 
 
@@ -360,6 +363,111 @@ async def precision_land_velocity_pid_method(drone, vid, color, mission_id, logf
                 await drone.action.land()
 
             break
+
+
+async def precision_land_test(drone, mission_id, n_ned, e_ned, logfile):
+    """
+    Precision Landing via velocity control using PID implemented as function.
+    Landing occurs when height < 0.5 m.
+    """
+
+    pid_params = {"kp": 0.8, "ki": 0.05, "kd": 0.1}  # PID parameters
+    max_speed = 1.0  # m/s – max speed
+    descent_speed = 0.5  # m/s
+    landing_threshold = 4  # m
+    alignment_threshold = 0.3  # m threshold for alignment
+    alignment_stable_time = 2.0  # seconds to consider alignment stable
+    dt = 0.1  # time step in seconds
+
+    # Initialize PID states for north and east directions
+    state_north = {"integral": 0.0, "prev_error": 0.0}
+    state_east = {"integral": 0.0, "prev_error": 0.0}
+
+    # 0. Start Offboard mode
+    await drone.offboard.set_velocity_ned(VelocityNedYaw(0, 0, 0, 0))
+    await asyncio.sleep(0.1)
+
+    try:
+        await drone.offboard.start()
+        log.log("🟢 Offboard mode started", logfile)
+    except Exception as e:
+        log.log(f"❌ Failed to start offboard: {e}", logfile)
+        return
+
+    # Aktueller Offset
+    delta_north = n_ned
+    delta_east = e_ned
+
+    # 1. Horizontal alignment phase
+    while True:
+        v_north, state_north = pid_update(
+            delta_north, dt, state_north, **pid_params, max_output=max_speed)
+        v_east,  state_east = pid_update(
+            delta_east, dt, state_east, **pid_params, max_output=max_speed)
+
+        # Drohne fliegt und korrigiert Position
+        await drone.offboard.set_velocity_ned(VelocityNedYaw(
+            north_m_s=v_north,
+            east_m_s=v_east,
+            down_m_s=0.0,
+            yaw_deg=0.0
+        ))
+
+        print(f"\r🟡 Aligning: vN={v_north:.2f}, vE={v_east:.2f} – ΔN={delta_north:.2f}, ΔE={delta_east:.2f}", end="")
+
+        # Simulierter Effekt der Korrektur auf den Offset
+        delta_north -= v_north * dt
+        delta_east -= v_east * dt
+
+        if abs(delta_north) < alignment_threshold and abs(delta_east) < alignment_threshold:
+            stable_time += dt
+            if stable_time >= alignment_stable_time:
+                await drone.offboard.set_velocity_ned(VelocityNedYaw(0, 0, 0, 0))
+                log.log("✅ Alignment complete. Starting descent.\n", logfile)
+                break
+        else:
+            stable_time = 0.0
+
+        await asyncio.sleep(dt)
+
+    # 2. Precision Landing phase with descent
+    while True:
+        v_north, state_north = pid_update(
+            delta_north, dt, state_north, **pid_params, max_output=max_speed)
+        v_east,  state_east = pid_update(
+            delta_east, dt, state_east, **pid_params, max_output=max_speed)
+
+        await drone.offboard.set_velocity_ned(VelocityNedYaw(
+            north_m_s=v_north,
+            east_m_s=v_east,
+            down_m_s=descent_speed,
+            yaw_deg=0.0
+        ))
+
+        position = await drone.telemetry.position().__anext__()
+        current_alt = position.relative_altitude_m
+        print(f"\r✈️ vN={v_north:.2f}, vE={v_east:.2f}, Alt={current_alt:.2f} m", end="")
+
+        delta_north -= v_north * dt
+        delta_east -= v_east * dt
+
+        if current_alt < landing_threshold:
+            log.log("\n✅ Altitude < 0.5 m → Landing\n", logfile)
+
+            if mission_id == 2:
+                await default_land_and_disarm(drone, logfile)
+            elif mission_id == 3:
+                # prevent auto-disarm by setting COM_DISARM_LAND = 0
+                try:
+                    await drone.param.set_param_float("COM_DISARM_LAND", 0.0)
+                    log.log("🔧 Set COM_DISARM_LAND = 0.0 to prevent auto-disarm", logfile)
+                except Exception as e:
+                    log.log(f"⚠️ Could not set COM_DISARM_LAND: {e}", logfile)
+                await drone.action.land()
+
+            break
+
+        await asyncio.sleep(dt)
 
 
 def offset_coordinates(lat: float, lon: float,

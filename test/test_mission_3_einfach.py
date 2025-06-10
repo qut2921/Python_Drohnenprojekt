@@ -65,6 +65,9 @@ async def mission_3():
 
         if i < len(mission_locations):
             #7. precisionland on target
+            await drone.param.set_param_float("COM_DISARM_LAND", 0.0)
+            log.log("🔧 Set COM_DISARM_LAND = 0.0 to prevent auto-disarm", logfile)
+                
             await drone.action.land()
 
             async for state in drone.telemetry.landed_state():
@@ -73,8 +76,7 @@ async def mission_3():
                     log.log("✅ Drone is confirmed landed.", logfile)
                     log.log("Takeoff again in 2s", logfile)
                     await asyncio.sleep(2)
-                    await cl.arm_drone(drone, logfile)
-                    #8. takeoff to 15 meters
+                    
                     await cl.default_takeoff(drone, target_altitude, logfile)
                     break
         else:
