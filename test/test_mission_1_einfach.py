@@ -32,7 +32,7 @@ async def mission_1():
 
     # 2. Arm and Mission locations
     # Arm the drone
-    await cl.arm_drone(drone, logfile)
+   # await cl.arm_drone(drone, logfile)
 
     # Set mission locations
     home = await drone.telemetry.home().__anext__()
@@ -49,15 +49,15 @@ async def mission_1():
     vid = ip.start_videoCapture(1, logfile)
     sequence = 0
 
-    await cl.default_takeoff(drone, 0.0, logfile)
-    await drone.action.hold()
-    log.log("Takeoff abgeschlossen", logfile)
+   # await cl.default_takeoff(drone, 0.0, logfile)
+    #await drone.action.hold()
+    #log.log("Takeoff abgeschlossen", logfile)
 
     sequence = await ip.main_mission_1(drone, vid, sequence)
 
     # disarm the drone
-    await drone.action.disarm()
-    log.log("Drohne disarmed", logfile)
+    #await drone.action.disarm()
+    #log.log("Drohne disarmed", logfile)
    
     # Stop video capture
     ip.stop_videoCapture(vid, logfile)

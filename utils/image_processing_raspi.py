@@ -39,7 +39,7 @@ def set_camera_controls(vid):
     vid.set_controls({
         "AeEnable": False,              # Disable auto exposure
         # Set exposure time in microseconds (e.g., 10000 �s = 10ms)
-        "ExposureTime": 500,
+        "ExposureTime": 250,
         # Set the analog gain (1.0 is default, usually between 1 and 16)
         "AnalogueGain": 1.0
     })
@@ -50,7 +50,7 @@ def set_camera_controls2(vid):
     vid.set_controls({
         "AeEnable": False,              # Disable auto exposure
         # Set exposure time in microseconds (e.g., 10000 �s = 10ms)
-        "ExposureTime": 1000,
+        "ExposureTime": 100,
         # Set the analog gain (1.0 is default, usually between 1 and 16)
         "AnalogueGain": 1.0
     })
@@ -61,7 +61,7 @@ def set_camera_controls3(vid):
     vid.set_controls({
         "AeEnable": False,              # Disable auto exposure
         # Set exposure time in microseconds (e.g., 10000 �s = 10ms)
-        "ExposureTime": 1500,
+        "ExposureTime": 250,
         # Set the analog gain (1.0 is default, usually between 1 and 16)
         "AnalogueGain": 1.0
     })
@@ -89,6 +89,8 @@ def start_videoCapture(mission_id, logfile):
 
     elif mission_id == 2 or mission_id == 3:
         config = vid.create_still_configuration(main=set_sensor_properties())
+        #config = vid.create_preview_configuration(main=set_sensor_properties())
+        #vid.start_preview(Preview.QTGL)
         vid.configure(config)
         log.log("Mission 2 or 3 Still configuration set", logfile)
 
@@ -235,8 +237,14 @@ async def main_mission_1(drone, vid, sequence):
     camera_control_stamp = time.time()
     save_delay = 1  # Save image every 1 seconds
     hover_time = 45
+    setting_id = 0
 
-    while time.time() - camera_control_stamp >= hover_time:
+
+
+    print("Inside function")
+
+    while True:
+        print("In the loop")
 
         # Telemetry data that will come from the flight controller
         latitude, longitude, altitude, roll, pitch, yaw, _, _, key = await cm.get_parameters_for_image_processing(drone)
@@ -273,13 +281,18 @@ async def main_mission_1(drone, vid, sequence):
                     f"{output_dir}, {image_filename}, {pitch}, {roll}, {altitude}, {yaw}, {latitude}, {longitude}\n")
             print("Captured frame...")
 
-        if time.time() - camera_control_stamp >= 15:
+        if time.time() - camera_control_stamp >= 15 and setting_id==0:
             set_camera_controls2(vid)
             print("Changed Camera Settings! Exposure:1000")
-
-        if time.time() - camera_control_stamp >= 30:
+            setting_id +=1
+    
+        if time.time() - camera_control_stamp >= 30 and setting_id==1:
             set_camera_controls3(vid)
             print("Changed Camera Settings! Exposure:1500")
+            setting_id +=1
+
+        if time.time()- camera_control_stamp >= hover_time:
+            break
 
     return sequence
 
@@ -311,7 +324,7 @@ async def main_mission_2(drone, vid, colorProfile):
         longitude
     )
 
-    if n_ned or e_ned == None:
+    if n_ned == None or e_ned == None:
         print("No object found!")
 
     return n_ned, e_ned

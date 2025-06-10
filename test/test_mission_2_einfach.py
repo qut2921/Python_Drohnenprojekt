@@ -8,6 +8,7 @@ import asyncio
 import math
 import time  # type:ignore
 from mavsdk import system
+import cv2
 
 async def mission_2(): 
     """
@@ -33,7 +34,7 @@ async def mission_2():
     
     # 2. arm the drone and set location
     # arm the drone
-    await cl.arm_drone(drone, logfile)
+    #await cl.arm_drone(drone, logfile)
 
     # set home location
     home = await drone.telemetry.home().__anext__()
@@ -42,11 +43,11 @@ async def mission_2():
     
     # set location
     mission_locations = [(48.76786, 11.33668)] # target location
-
     # 3. Start camera
     vid = ip.start_videoCapture(2,logfile)
-    color = 4  # orange target
+    color = 1  # orange target
 
+    bool = False
 
     n_ned, e_ned = await ip.main_mission_2(drone, vid, color) # orange target
     if n_ned is None or e_ned is None:
@@ -63,6 +64,7 @@ async def mission_2():
        while time.time() - timestamp < 30:  # wait for 30 seconds
               n_ned, e_ned = await ip.main_mission_2(drone, vid, color)
               log.log(f"n_ned: {n_ned}, e_ned: {e_ned}", logfile)
+              asyncio.sleep(0.5)
            
 
 asyncio.run(mission_2())
