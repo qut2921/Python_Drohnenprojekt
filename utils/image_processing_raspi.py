@@ -85,12 +85,12 @@ def start_videoCapture(mission_id, logfile):
         config = vid.create_preview_configuration(main=set_sensor_properties())
         vid.configure(config)
         # vid.start_preview(Preview.QTGL)
-        print("Preview configuration set")
+        log.log("Mission 1 Preview configuration set", logfile)
 
     elif mission_id == 2 or mission_id == 3:
         config = vid.create_still_configuration(main=set_sensor_properties())
         vid.configure(config)
-        print("Still configuration set")
+        log.log("Mission 2 or 3 Still configuration set", logfile)
 
     else:
         raise ValueError("Invalid mission ID. Use 1, 2, or 3.")
@@ -111,6 +111,11 @@ def start_videoCapture(mission_id, logfile):
         set_camera_controls(vid)
 
     return vid
+
+
+def stop_videoCapture(vid, logfile):
+    vid.stop()
+    log.log("Camera stopped successfully", logfile)
 
 
 def capture_and_convert(vid):
