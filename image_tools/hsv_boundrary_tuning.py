@@ -3,7 +3,7 @@ import numpy as np
 
 
 image_file = "BildsequenzTest_0/frame_0_0.jpg"
-color = "red"  # Change to "blue" or "green" as needed
+color = "blue"  # Change to "blue" or "green" as needed
 
 def nothing(x):
     pass

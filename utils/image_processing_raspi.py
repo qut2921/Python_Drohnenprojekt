@@ -144,10 +144,18 @@ def locate_object(
     This function is used for post-processing of the images that have been shot
     and saved along with the telemetry data. This function is used in mission1.
     """
-    # mask for the specified color profile
-    _, hsv_lower, hsv_upper = colors.set_colorProfiles(colorProfile)
-    mask = cv2.inRange(hsv, hsv_lower, hsv_upper)
 
+    if colorProfile == 1:
+        name, lower_red1, upper_red1 = colors.set_colorProfilesSun(1)
+        name, lower_red2, upper_red2 = colors.set_colorProfilesSun(3)
+        mask1 = cv2.inRange(hsv, lower_red1, upper_red1)
+        mask2 = cv2.inRange(hsv, lower_red2, upper_red2)
+        mask = cv2.bitwise_or(mask1, mask2)
+        mask = cv2.threshold(mask, 127, 255, cv2.THRESH_BINARY)[1]
+
+    else:
+        name, hsv_lower, hsv_upper = colors.set_colorProfiles(colorProfile)
+        mask = cv2.inRange(hsv, hsv_lower, hsv_upper)
     # remove noise from mask
     # mask = remove_noise(mask)
 

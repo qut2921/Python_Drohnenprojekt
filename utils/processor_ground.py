@@ -9,6 +9,7 @@ import numpy as np
 import cv2
 import utils.colors as colors
 import utils.gps_calculator as gps
+import utils.shape_detector as sd
 
 
 def read_image_and_convert(output_dir, image_name):
@@ -53,8 +54,8 @@ def locate_object_and_save(
     """
     # mask for the specified color profile
     if colorProfile == 1:
-        name, lower_red1, upper_red1 = colors.set_colorProfiles(1)
-        name, lower_red2, upper_red2 = colors.set_colorProfiles(3)
+        name, lower_red1, upper_red1 = colors.set_colorProfilesSun(1)
+        name, lower_red2, upper_red2 = colors.set_colorProfilesSun(3)
         mask1 = cv2.inRange(hsv, lower_red1, upper_red1)
         mask2 = cv2.inRange(hsv, lower_red2, upper_red2)
         mask = cv2.bitwise_or(mask1, mask2)
@@ -103,10 +104,12 @@ def locate_object_and_save(
                     h,
                     x_distance,
                     y_distance)
+                
+                frame, shape = sd.detect_shape(frame, hsv, x, y, w, h, colorProfile)
 
                 with open(f"{output_dir}/image_processed.csv", "a") as processed_log_file:
                     processed_log_file.write(
-                        f"{output_dir}, {image_filename}, {n_ned}, {e_ned}, {lat_object}, {long_object}\n")
+                        f"{output_dir}, {image_filename}, {n_ned}, {e_ned}, {lat_object}, {long_object}, {shape}\n")
 
                 if detectedObject == False:
                     detectedObject = True
