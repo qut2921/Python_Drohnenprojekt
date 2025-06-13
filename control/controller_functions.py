@@ -497,7 +497,7 @@ async def fly_spiral_search(
     :return: True if a target is detected, otherwise False
     """
     max_radius = 10.0
-    radius_step = 1
+    radius_step = 5
     points_per_circle = 4
     radius = radius_step
     angle = 0.0
