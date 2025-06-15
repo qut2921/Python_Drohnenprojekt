@@ -142,16 +142,14 @@ async def get_parameters_for_image_processing(drone):
         get_euler(drone),
         # get_heading(drone),
         monitor_communication(drone),
-        get_velocity(drone),
     )
 
-    positions, euler, status, velocity = results
-    # positions, euler, status = results
+    positions, euler, status = results
 
     if None in results:
         print("One or more parameters returned None. Exiting function.")
         key = 1
-        return None, None, None, None, None, None, None, None, key
+        return None, None, None, None, None, None, None, key
 
     # Unpack the results
     latitude = positions.latitude_deg
@@ -160,9 +158,40 @@ async def get_parameters_for_image_processing(drone):
     roll = euler.roll_deg
     pitch = euler.pitch_deg
     yaw = euler.yaw_deg
-    scalar_velocity = np.sqrt(
-        np.power(velocity.north_m_s, 2)+np.power(velocity.east_m_s, 2))
     key = 0
 
-    return latitude, longitude, altitude, roll, pitch, yaw, status, scalar_velocity, key
-    # return latitude, longitude, roll, pitch, yaw, status, key
+    return latitude, longitude, altitude, roll, pitch, yaw, status, key
+
+
+async def get_parameters_for_indoor_testing(drone):
+    """This function gets the parameters needed for image processing.
+    The function are executed in parallel to save time.
+    Once a function times out due to a lost of communication, the function will
+    break which will lead to RTL.
+    """
+
+    # Set a global timeout for all operations combined
+    results = await asyncio.gather(
+        get_euler(drone),
+        # get_heading(drone),
+        monitor_communication(drone),
+    )
+
+    euler, status = results
+
+    if None in results:
+        print("One or more parameters returned None. Exiting function.")
+        key = 1
+        return None, None, None, None, None, None, None, key
+
+    # Unpack the results
+    latitude = 48.4558
+    longitude = 11.2359
+    altitude = 2.0
+    roll = euler.roll_deg
+    pitch = euler.pitch_deg
+    yaw = euler.yaw_deg
+    key = 0
+
+    return latitude, longitude, altitude, roll, pitch, yaw, status, key
+    

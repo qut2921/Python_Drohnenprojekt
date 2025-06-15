@@ -6,20 +6,19 @@ A separate module is used for post-processing of the images that have been shot
 and saved along with the telemetry data.
 """
 
+from picamera2 import Picamera2, Preview
+import utils.gps_calculator as gps
+import utils.colors as colors
+import control.logging as log
+import control.communicator as cm
+import asyncio
+from picamera2.controls import Controls
+import numpy as np  # type:ignore
+import cv2  # type:ignore
+import time  # type:ignore
 import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-import time  # type:ignore
-import cv2  # type:ignore
-import numpy as np  # type:ignore
-from picamera2 import Picamera2, Preview 
-from picamera2.controls import Controls
-import asyncio
-import control.communicator as cm
-import control.logging as log
-import utils.colors as colors
-import utils.gps_calculator as gps
-
 
 
 def set_sensor_properties():
@@ -89,8 +88,8 @@ def start_videoCapture(mission_id, logfile):
 
     elif mission_id == 2 or mission_id == 3:
         config = vid.create_still_configuration(main=set_sensor_properties())
-        #config = vid.create_preview_configuration(main=set_sensor_properties())
-        #vid.start_preview(Preview.QTGL)
+        # config = vid.create_preview_configuration(main=set_sensor_properties())
+        # vid.start_preview(Preview.QTGL)
         vid.configure(config)
         log.log("Mission 2 or 3 Still configuration set", logfile)
 
@@ -103,7 +102,6 @@ def start_videoCapture(mission_id, logfile):
         log.log("Camera started", logfile)
     except Exception as e:
         log.log(f"Error starting camera: {e}", logfile)
-        
 
     if mission_id == 1:
         # Set camera controls for mission 1
@@ -201,6 +199,72 @@ def locate_object(
     return n_ned, e_ned
 
 
+def locate_object_indoor(
+        colorProfile, hsv,
+        frame, min_area, detectedObject,
+        pitch, roll, altitude, heading, lat_position, long_position):
+    """
+    Locate the object in the frame based on the specified color profile.
+    This function is used for post-processing of the images that have been shot
+    and saved along with the telemetry data. This function is used in mission1.
+    """
+
+    if colorProfile == 1:
+        name, lower_red1, upper_red1 = colors.set_colorProfilesSun(1)
+        name, lower_red2, upper_red2 = colors.set_colorProfilesSun(3)
+        mask1 = cv2.inRange(hsv, lower_red1, upper_red1)
+        mask2 = cv2.inRange(hsv, lower_red2, upper_red2)
+        mask = cv2.bitwise_or(mask1, mask2)
+        mask = cv2.threshold(mask, 127, 255, cv2.THRESH_BINARY)[1]
+
+    else:
+        name, hsv_lower, hsv_upper = colors.set_colorProfiles(colorProfile)
+        mask = cv2.inRange(hsv, hsv_lower, hsv_upper)
+    # remove noise from mask
+    # mask = remove_noise(mask)
+
+    # find contours in the mask
+    contours, _ = cv2.findContours(
+        mask.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+
+    x_distance = None
+    y_distance = None
+
+    if contours:
+        biggest = sorted(contours, key=cv2.contourArea, reverse=True)[0]
+        area = cv2.contourArea(biggest)
+
+        # Check if area is larger than minimum area
+        if area >= min_area:
+            x, y, w, h = cv2.boundingRect(biggest)
+
+            # calculate GPS coordinates
+            x_distance, y_distance, _, _, _, _ = gps.calculate_gps(
+                x,
+                y,
+                w,
+                h,
+                pitch,
+                roll,
+                altitude,
+                heading,
+                lat_position,
+                long_position,
+                frame)
+
+            if detectedObject == False:
+                detectedObject = True
+                print(f"Object detected")
+
+            return x_distance, y_distance
+
+        else:
+            # Reset flag if area is too small
+            detectedObject = False
+
+    return x_distance, y_distance
+
+
 def create_directory(sequence):
     """Create a directory for saving images.
 
@@ -247,15 +311,16 @@ async def main_mission_1(drone, vid, sequence):
     hover_time = 45
     setting_id = 0
 
-
-
     print("Inside function")
 
     while True:
         print("In the loop")
 
         # Telemetry data that will come from the flight controller
-        latitude, longitude, altitude, roll, pitch, yaw, _, _, key = await cm.get_parameters_for_image_processing(drone)
+        # latitude, longitude, altitude, roll, pitch, yaw, _, key = await cm.get_parameters_for_image_processing(drone)
+
+        # Used for indoor test
+        latitude, longitude, altitude, roll, pitch, yaw, _, key = await cm.get_parameters_for_indoor_testing(drone)
 
         if key == 1:
             for i in range(10):
@@ -289,17 +354,17 @@ async def main_mission_1(drone, vid, sequence):
                     f"{output_dir}, {image_filename}, {pitch}, {roll}, {altitude}, {yaw}, {latitude}, {longitude}\n")
             print("Captured frame...")
 
-        if time.time() - camera_control_stamp >= 15 and setting_id==0:
+        if time.time() - camera_control_stamp >= 15 and setting_id == 0:
             set_camera_controls2(vid)
             print("Changed Camera Settings! Exposure:1000")
-            setting_id +=1
-    
-        if time.time() - camera_control_stamp >= 30 and setting_id==1:
+            setting_id += 1
+
+        if time.time() - camera_control_stamp >= 30 and setting_id == 1:
             set_camera_controls3(vid)
             print("Changed Camera Settings! Exposure:1500")
-            setting_id +=1
+            setting_id += 1
 
-        if time.time()- camera_control_stamp >= hover_time:
+        if time.time() - camera_control_stamp >= hover_time:
             break
 
     return sequence
@@ -310,7 +375,11 @@ async def main_mission_2(drone, vid, colorProfile):
     min_area = 300
     detectedObject = False
 
-    latitude, longitude, altitude, roll, pitch, yaw, status, scalar_velocity, key = await cm.get_parameters_for_image_processing(drone)
+    # Telemetry data that will come from the flight controller
+    # latitude, longitude, altitude, roll, pitch, yaw, status, key = await cm.get_parameters_for_image_processing(drone)
+
+    # Used for indoor testing
+    latitude, longitude, altitude, roll, pitch, yaw, _, key = await cm.get_parameters_for_indoor_testing(drone)
 
     if key == 1:
         print("COMMUNICATION LOST!")
@@ -318,7 +387,21 @@ async def main_mission_2(drone, vid, colorProfile):
 
     hsv, frame = capture_and_convert(vid)
 
-    n_ned, e_ned = locate_object(
+    """n_ned, e_ned = locate_object(
+        colorProfile,
+        hsv,
+        frame,
+        min_area,
+        detectedObject,
+        pitch,
+        roll,
+        altitude,
+        yaw,
+        latitude,
+        longitude
+    )"""
+
+    x_distance, y_distance = locate_object_indoor(
         colorProfile,
         hsv,
         frame,
@@ -332,7 +415,12 @@ async def main_mission_2(drone, vid, colorProfile):
         longitude
     )
 
-    if n_ned == None or e_ned == None:
+    """if n_ned == None or e_ned == None:
+        print("No object found!")"""
+
+    if x_distance == None or y_distance == None:
         print("No object found!")
 
-    return n_ned, e_ned
+    """return n_ned, e_ned"""
+
+    return x_distance, y_distance
