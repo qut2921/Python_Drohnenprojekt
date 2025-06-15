@@ -58,10 +58,6 @@ def calculate_gps(
     e_ned = x_distance * np.sin(np.radians(heading)) + \
         y_distance * np.cos(np.radians(heading))  # [m]
     
-    # Camera has been installed the wrong way (180°)
-    n_ned = -n_ned
-    e_ned = -e_ned
-
     # Calculate GPS coordinates for small distances https://kompf.de/gps/distcalc.html
     delta_lat = n_ned / 111320  # [degrees]
     delta_lon = e_ned / \
