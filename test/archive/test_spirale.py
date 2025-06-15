@@ -8,11 +8,13 @@ async def test_spirale():
     """
     Makes the drone fly in a spiral pattern.
     """
+    logfile = "test_spirale.log"
+
     # 1 ️ Connect to the drone
-    drone = await cl.connect_drone()
+    drone = await cl.connect_drone(logfile)
 
     # 3 ️ Arm the drone
-    await cl.arm_drone(drone)
+    await cl.arm_drone(drone, logfile)
     await asyncio.sleep(2)
 
     # 6  Loop through the remaining altitudes
@@ -21,13 +23,13 @@ async def test_spirale():
     longitude = home_position.longitude_deg
 
     # 5  Take off to the first altitude
-    await cl.default_takeoff(drone, 5)
+    await cl.default_takeoff(drone, 5, logfile)
     await asyncio.sleep(2)
 
     # 7  Fly in a spiral pattern
-    await cl.fly_spiral_search(drone, latitude, longitude, 5)
+    await cl.fly_spiral_search(drone, latitude, longitude, 0, 0, 5, logfile)
 
     # 8  Land and disarm
-    await cl.default_land_and_disarm(drone)
+    await cl.default_land_and_disarm(drone, logfile)
 
 asyncio.run(test_spirale())
