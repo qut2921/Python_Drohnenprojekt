@@ -45,7 +45,7 @@ async def mission_2():
     # 3. Start camera
     vid = ip.start_videoCapture(mission_id,logfile)
     color = 4  # orange target
-    condition = "cloudy"  # condition for color profile
+    condition = "cloudy"  # condition for color profile only input "cloudy" or "sunny"
 
     # 4. takeoff to 5 meters
     target_altitude = 5.0
@@ -71,7 +71,7 @@ async def mission_2():
     if x_distance is None or y_distance is None:
         log.log("TARGET NOT FOUND", logfile)
         bool = await cl.fly_spiral_search(drone, center_lat,
-                                          center_lon, vid, color, target_altitude,
+                                          center_lon, vid, color, condition, target_altitude,
                                           logfile)
     else:
         bool = True

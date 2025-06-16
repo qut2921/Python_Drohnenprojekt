@@ -46,7 +46,7 @@ async def mission_3():
 
     # 3. Start camera
     vid = ip.start_videoCapture(mission_id, logfile)
-    condition = "cloudy"  # condition for color profile
+    condition = "cloudy"  # condition for color profile only input "cloudy" or "sunny"
 
     # 4. takeoff to 15 meters
     target_altitude = 15.0
