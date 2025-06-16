@@ -187,7 +187,7 @@ async def get_parameters_for_indoor_testing(drone):
     # Unpack the results
     latitude = 48.4558
     longitude = 11.2359
-    altitude = 2.0
+    altitude = 1.5
     roll = euler.roll_deg
     pitch = euler.pitch_deg
     yaw = euler.yaw_deg
