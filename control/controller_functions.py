@@ -247,7 +247,7 @@ def pid_update(error, dt, state, kp, ki, kd, max_output=1.0):
     return max(-max_output, min(max_output, output)), state
 
 
-async def precision_land_velocity_pid_method(drone, vid, color, condition,mission_id, logfile):
+async def precision_land_velocity_pid_method(drone, vid, color, condition, mode, logfile):
     """
     Precision Landing via velocity control using PID implemented as function.
     Landing occurs when height < 0.5 m.
@@ -358,16 +358,14 @@ async def precision_land_velocity_pid_method(drone, vid, color, condition,missio
         if current_alt < landing_threshold:
             log.log("\n✅ Altitude < 0.5 m → Landing\n", logfile)
 
-            if mission_id == 2:
-                await default_land_and_disarm(drone, logfile)
-            elif mission_id == 3:
-                try:
-                    await drone.param.set_param_float("COM_DISARM_LAND", 0.0)
-                    log.log("🔧 Set COM_DISARM_LAND = 0.0 to prevent auto-disarm", logfile)
-                except Exception as e:
-                    log.log(f"⚠️ Could not set COM_DISARM_LAND: {e}", logfile)
+            if mode == "default":
+                # Default landing and disarm
+                log.log("🔄 Default landing...", logfile)
                 await drone.action.land()
-
+            elif mode == "offboard":
+                # Land in Offboard mode without disarming
+                log.log("🔄 Landing in Offboard mode...", logfile)
+                await drone.offboard.set_velocity_ned(VelocityNedYaw(0.0, 0.0, 0.2, 0.0))
             break
 
         await asyncio.sleep(dt)
