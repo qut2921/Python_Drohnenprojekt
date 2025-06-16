@@ -26,6 +26,7 @@ async def mission_3():
     # Start logging
     logfile = "mission3.log"
     log.log("Mission 3 gestartet", logfile)
+    mission_id = 3
 
 
     # 1. connect to the drone
@@ -36,12 +37,15 @@ async def mission_3():
     await cl.arm_drone(drone, logfile)
     await asyncio.sleep(1)
 
+    await drone.param.set_param_float("COM_DISARM_LAND", 0.0)
+    log.log("🔧 Set COM_DISARM_LAND = 0.0 to prevent auto-disarm", logfile)
+
     # set location 
     mission_locations = [(48.76758, 11.33717, 0),   # blue target location
                          (48.76750, 11.33720, 2)]   # yellow target location
 
     # 3. Start camera
-    vid = ip.start_videoCapture(2)
+    vid = ip.start_videoCapture(3, logfile)
 
     # 4. takeoff to 15 meters
     target_altitude = 15.0

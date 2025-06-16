@@ -74,11 +74,12 @@ async def mission_1():
                                target_altitude,
                                logfile)
         await drone.action.hold()
-        cl.save_progress(i)  
+         
 
         if i < len(mission_locations):
             # ⏳ Nur warten, wenn es NICHT der letzte Punkt ist
-            sequence = await ip.main_mission_1(drone, vid, sequence)
+            sequence = await ip.main_mission_1(drone, vid, sequence, logfile)
+            cl.save_progress(i) 
         else:
             log.log("🏁 Final point reached – skipping wait, preparing to land.", logfile)
 

@@ -33,38 +33,43 @@ def set_sensor_properties():
     return camera_config
 
 
-def set_camera_controls(vid):
+def set_camera_controls(vid, logfile):
 
+    exposure_time = 2500  # Exposure time in microseconds (e.g., 2500 �s = 2.5ms)
     vid.set_controls({
         "AeEnable": False,              # Disable auto exposure
         # Set exposure time in microseconds (e.g., 10000 �s = 10ms)
-        "ExposureTime": 2500,
+        "ExposureTime": exposure_time,
+        # Set the analog gain (1.0 is default, usually between 1 and 16)
+        "AnalogueGain": 1.0
+    })
+    log.log(f"Changed Camera Settings! Exposure:{exposure_time}", logfile)
+
+
+def set_camera_controls2(vid, logfile):
+
+    exposure_time = 1500  # Exposure time in microseconds (e.g., 1500 �s = 1.5ms)
+    vid.set_controls({
+        "AeEnable": False,              # Disable auto exposure
+        # Set exposure time in microseconds (e.g., 10000 �s = 10ms)
+        "ExposureTime": exposure_time,
         # Set the analog gain (1.0 is default, usually between 1 and 16)
         "AnalogueGain": 1.0
     })
 
+    log.log(f"Changed Camera Settings! Exposure:{exposure_time}", logfile)
 
-def set_camera_controls2(vid):
 
+def set_camera_controls3(vid, logfile):
+    exposure_time = 1000  # Exposure time in microseconds (e.g., 1000 �s = 1ms)
     vid.set_controls({
         "AeEnable": False,              # Disable auto exposure
         # Set exposure time in microseconds (e.g., 10000 �s = 10ms)
-        "ExposureTime": 2500,
+        "ExposureTime": exposure_time,
         # Set the analog gain (1.0 is default, usually between 1 and 16)
         "AnalogueGain": 1.0
     })
-
-    print("Changed Camera Settings! Exposure:1500")
-
-
-def set_camera_controls3(vid):
-
-    vid.set_controls({
-        "AeEnable": True,              # Disable auto exposure
-        # Set exposure time in microseconds (e.g., 10000 �s = 10ms)
-        "AeTarget": 100,
-    })
-    print("Changed Camera Settings! Exposure:AUTO")
+    log.log(f"Changed Camera Settings! Exposure:{exposure_time}", logfile)
 
 
 def start_videoCapture(mission_id, logfile):
@@ -145,8 +150,8 @@ def locate_object(
     """
 
     if colorProfile == 1:
-        name, lower_red1, upper_red1 = colors.set_colorProfilesSun(1)
-        name, lower_red2, upper_red2 = colors.set_colorProfilesSun(3)
+        name, lower_red1, upper_red1 = colors.set_colorProfiles(1)
+        name, lower_red2, upper_red2 = colors.set_colorProfiles(3)
         mask1 = cv2.inRange(hsv, lower_red1, upper_red1)
         mask2 = cv2.inRange(hsv, lower_red2, upper_red2)
         mask = cv2.bitwise_or(mask1, mask2)
@@ -155,15 +160,16 @@ def locate_object(
     else:
         name, hsv_lower, hsv_upper = colors.set_colorProfiles(colorProfile)
         mask = cv2.inRange(hsv, hsv_lower, hsv_upper)
+    
     # remove noise from mask
     # mask = remove_noise(mask)
-
+    
     # find contours in the mask
     contours, _ = cv2.findContours(
         mask.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
 
-    e_ned = None
-    n_ned = None
+    x_distance = None
+    y_distance = None
 
     if contours:
         biggest = sorted(contours, key=cv2.contourArea, reverse=True)[0]
@@ -174,7 +180,7 @@ def locate_object(
             x, y, w, h = cv2.boundingRect(biggest)
 
             # calculate GPS coordinates
-            _, _, _, _, n_ned, e_ned = gps.calculate_gps(
+            x_distance, y_distance, _, _, _, _ = gps.calculate_gps(
                 x,
                 y,
                 w,
@@ -191,13 +197,13 @@ def locate_object(
                 detectedObject = True
                 print(f"Object detected")
 
-            return n_ned, e_ned
+            return x_distance, y_distance
 
         else:
             # Reset flag if area is too small
             detectedObject = False
 
-    return n_ned, e_ned
+    return x_distance, y_distance
 
 
 def locate_object_indoor(
@@ -266,7 +272,7 @@ def locate_object_indoor(
     return x_distance, y_distance
 
 
-def create_directory(sequence):
+def create_directory(sequence, logfile):
     """Create a directory for saving images.
 
     sequence: specifies the sequence of image savings based on the mission plan
@@ -276,7 +282,7 @@ def create_directory(sequence):
 
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
-        print("Creating directory" + output_dir + "...")
+        log.log("Creating directory" + output_dir + "...", logfile)
     return output_dir
 
 
@@ -295,7 +301,7 @@ def save_image(vid, frame_amount, output_dir, sequence):
     return image_filename
 
 
-async def main_mission_1(drone, vid, sequence):
+async def main_mission_1(drone, vid, sequence, logfile):
     """
     This is the concept for the image processing in Mission 1.
     The function just saves the image after specified time intervals and
@@ -318,14 +324,14 @@ async def main_mission_1(drone, vid, sequence):
         print("In the loop")
 
         # Telemetry data that will come from the flight controller
-        # latitude, longitude, altitude, roll, pitch, yaw, _, key = await cm.get_parameters_for_image_processing(drone)
+        latitude, longitude, altitude, roll, pitch, yaw, _, key = await cm.get_parameters_for_image_processing(drone)
 
         # Used for indoor test
-        latitude, longitude, altitude, roll, pitch, yaw, _, key = await cm.get_parameters_for_indoor_testing(drone)
+        #latitude, longitude, altitude, roll, pitch, yaw, _, key = await cm.get_parameters_for_indoor_testing(drone)
 
         if key == 1:
             for i in range(10):
-                print("COMMUNICATION LOST!")
+                log.log("COMMUNICATION LOST!",logfile)
                 asyncio.sleep(0.5)
 
             break
@@ -333,9 +339,8 @@ async def main_mission_1(drone, vid, sequence):
         # Check if new directory has to be created
 
         if new_dir == True:
-            output_dir = create_directory(sequence)
-
-            set_camera_controls(vid)
+            output_dir = create_directory(sequence, logfile)
+            set_camera_controls(vid, logfile)
             new_dir = False
             image_count = 0  # Reset numbering for images in new directory
             sequence += 1
@@ -356,29 +361,30 @@ async def main_mission_1(drone, vid, sequence):
             print("Captured frame...")
 
         if time.time() - camera_control_stamp >= 15 and setting_id == 0:
-            set_camera_controls2(vid)
+            set_camera_controls2(vid, logfile)
             setting_id += 1
 
         if time.time() - camera_control_stamp >= 30 and setting_id == 1:
-            set_camera_controls3(vid)
+            set_camera_controls3(vid, logfile)
             setting_id += 1
 
         if time.time() - camera_control_stamp >= hover_time:
+            log.log("Image capture finished", logfile)
             break
 
     return sequence
 
 
-async def main_mission_2(drone, vid, colorProfile):
+async def main_mission_2(drone, vid, colorProfile, logfile):
 
     min_area = 300
     detectedObject = False
 
     # Telemetry data that will come from the flight controller
-    # latitude, longitude, altitude, roll, pitch, yaw, status, key = await cm.get_parameters_for_image_processing(drone)
+    latitude, longitude, altitude, roll, pitch, yaw, _, key = await cm.get_parameters_for_image_processing(drone)
 
     # Used for indoor testing
-    latitude, longitude, altitude, roll, pitch, yaw, _, key = await cm.get_parameters_for_indoor_testing(drone)
+    #latitude, longitude, altitude, roll, pitch, yaw, _, key = await cm.get_parameters_for_indoor_testing(drone)
 
     if key == 1:
         print("COMMUNICATION LOST!")
@@ -386,21 +392,7 @@ async def main_mission_2(drone, vid, colorProfile):
 
     hsv, frame = capture_and_convert(vid)
 
-    """n_ned, e_ned = locate_object(
-        colorProfile,
-        hsv,
-        frame,
-        min_area,
-        detectedObject,
-        pitch,
-        roll,
-        altitude,
-        yaw,
-        latitude,
-        longitude
-    )"""
-
-    x_distance, y_distance = locate_object_indoor(
+    x_distance, y_distance = locate_object(
         colorProfile,
         hsv,
         frame,
@@ -414,12 +406,9 @@ async def main_mission_2(drone, vid, colorProfile):
         longitude
     )
 
-    """if n_ned == None or e_ned == None:
-        print("No object found!")"""
+    log.log(f"Object found at x: {x_distance}, y: {y_distance}", logfile)
 
     if x_distance == None or y_distance == None:
-        print("No object found!")
-
-    """return n_ned, e_ned"""
+        log.log("No object found!", logfile)
 
     return x_distance, y_distance

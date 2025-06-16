@@ -43,7 +43,7 @@ async def mission_2():
     mission_locations = [(48.76786, 11.33668)] # target location
 
     # 3. Start camera
-    vid = ip.start_videoCapture(2)
+    vid = ip.start_videoCapture(mission_id,logfile)
     color = 4  # orange target
 
     # 4. takeoff to 5 meters
@@ -66,8 +66,8 @@ async def mission_2():
     center_lat = position.latitude_deg
     center_lon = position.longitude_deg
 
-    n_ned, e_ned = await ip.main_mission_2(drone, vid, color) # orange target
-    if n_ned is None or e_ned is None:
+    x_distance, y_distance = await ip.main_mission_2(drone, vid, color, logfile) # orange target
+    if x_distance is None or y_distance is None:
         log.log("TARGET NOT FOUND", logfile)
         bool = await cl.fly_spiral_search(drone, center_lat,
                                           center_lon, vid, color, target_altitude,
