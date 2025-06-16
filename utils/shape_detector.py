@@ -24,17 +24,17 @@ def create_roi(hsv, x, y, w, h):
     return hsv[y:y+h, x:x+w]
 
 
-def detect_shape(frame, hsv,x, y, w, h, color):
+def detect_shape(frame, hsv,x, y, w, h, color, condition):
     shape = "Unknown"
     roi_hsv = create_roi(hsv, x, y, w, h)
     roi = create_roi(frame, x, y, w, h)
 
     if color == 0:
-        _, lower_black, upper_black = colors.set_colorProfiles(5)
+        _, lower_black, upper_black = colors.set_colorProfiles(5, condition)
         black_mask = cv2.inRange(roi_hsv, lower_black, upper_black)
         black_mask = processor.remove_noise(black_mask)
     else:
-        _, lower_black, upper_black = colors.set_colorProfiles(6)
+        _, lower_black, upper_black = colors.set_colorProfiles(6, condition)
         black_mask = cv2.inRange(roi_hsv, lower_black, upper_black)
                 
     contours_black, _ = cv2.findContours(black_mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
@@ -45,7 +45,7 @@ def detect_shape(frame, hsv,x, y, w, h, color):
                 
 
         if cv2.contourArea(biggest) >= 300:
-            epsilon = 0.05*cv2.arcLength(biggest, True)
+            epsilon = 0.03*cv2.arcLength(biggest, True)
             approx = cv2.approxPolyDP(biggest, epsilon, True)
 
             cv2.drawContours(roi, [biggest], 0, (0, 255, 0), 2)

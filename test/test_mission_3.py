@@ -45,7 +45,8 @@ async def mission_3():
                          (48.76750, 11.33720, 2)]   # yellow target location
 
     # 3. Start camera
-    vid = ip.start_videoCapture(3, logfile)
+    vid = ip.start_videoCapture(mission_id, logfile)
+    condition = "cloudy"  # condition for color profile
 
     # 4. takeoff to 15 meters
     target_altitude = 15.0
@@ -70,7 +71,7 @@ async def mission_3():
 
         if i < len(mission_locations):
             #7. precisionland on target
-            await cl.precision_land_velocity_pid_method(drone, vid, color, logfile)
+            await cl.precision_land_velocity_pid_method(drone, vid, color, condition,logfile)
 
             async for state in drone.telemetry.landed_state():
                 print(f"\r🔍 Landed State: {state}", end="")

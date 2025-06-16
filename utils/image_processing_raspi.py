@@ -140,7 +140,7 @@ def capture_and_convert(vid):
 
 
 def locate_object(
-        colorProfile, hsv,
+        colorProfile, condition, hsv,
         frame, min_area, detectedObject,
         pitch, roll, altitude, heading, lat_position, long_position):
     """
@@ -150,86 +150,20 @@ def locate_object(
     """
 
     if colorProfile == 1:
-        name, lower_red1, upper_red1 = colors.set_colorProfiles(1)
-        name, lower_red2, upper_red2 = colors.set_colorProfiles(3)
+        name, lower_red1, upper_red1 = colors.set_colorProfiles(1, condition)
+        name, lower_red2, upper_red2 = colors.set_colorProfiles(3, condition)
         mask1 = cv2.inRange(hsv, lower_red1, upper_red1)
         mask2 = cv2.inRange(hsv, lower_red2, upper_red2)
         mask = cv2.bitwise_or(mask1, mask2)
         mask = cv2.threshold(mask, 127, 255, cv2.THRESH_BINARY)[1]
 
     else:
-        name, hsv_lower, hsv_upper = colors.set_colorProfiles(colorProfile)
+        name, hsv_lower, hsv_upper = colors.set_colorProfiles(colorProfile, condition)
         mask = cv2.inRange(hsv, hsv_lower, hsv_upper)
     
     # remove noise from mask
     # mask = remove_noise(mask)
     
-    # find contours in the mask
-    contours, _ = cv2.findContours(
-        mask.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
-
-    x_distance = None
-    y_distance = None
-
-    if contours:
-        biggest = sorted(contours, key=cv2.contourArea, reverse=True)[0]
-        area = cv2.contourArea(biggest)
-
-        # Check if area is larger than minimum area
-        if area >= min_area:
-            x, y, w, h = cv2.boundingRect(biggest)
-
-            # calculate GPS coordinates
-            x_distance, y_distance, _, _, _, _ = gps.calculate_gps(
-                x,
-                y,
-                w,
-                h,
-                pitch,
-                roll,
-                altitude,
-                heading,
-                lat_position,
-                long_position,
-                frame)
-
-            if detectedObject == False:
-                detectedObject = True
-                print(f"Object detected")
-
-            return x_distance, y_distance
-
-        else:
-            # Reset flag if area is too small
-            detectedObject = False
-
-    return x_distance, y_distance
-
-
-def locate_object_indoor(
-        colorProfile, hsv,
-        frame, min_area, detectedObject,
-        pitch, roll, altitude, heading, lat_position, long_position):
-    """
-    Locate the object in the frame based on the specified color profile.
-    This function is used for post-processing of the images that have been shot
-    and saved along with the telemetry data. This function is used in mission1.
-    """
-
-    if colorProfile == 1:
-        name, lower_red1, upper_red1 = colors.set_colorProfilesSun(1)
-        name, lower_red2, upper_red2 = colors.set_colorProfilesSun(3)
-        mask1 = cv2.inRange(hsv, lower_red1, upper_red1)
-        mask2 = cv2.inRange(hsv, lower_red2, upper_red2)
-        mask = cv2.bitwise_or(mask1, mask2)
-        mask = cv2.threshold(mask, 127, 255, cv2.THRESH_BINARY)[1]
-
-    else:
-        name, hsv_lower, hsv_upper = colors.set_colorProfiles(colorProfile)
-        mask = cv2.inRange(hsv, hsv_lower, hsv_upper)
-    # remove noise from mask
-    # mask = remove_noise(mask)
-
     # find contours in the mask
     contours, _ = cv2.findContours(
         mask.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
@@ -326,9 +260,6 @@ async def main_mission_1(drone, vid, sequence, logfile):
         # Telemetry data that will come from the flight controller
         latitude, longitude, altitude, roll, pitch, yaw, _, key = await cm.get_parameters_for_image_processing(drone)
 
-        # Used for indoor test
-        #latitude, longitude, altitude, roll, pitch, yaw, _, key = await cm.get_parameters_for_indoor_testing(drone)
-
         if key == 1:
             for i in range(10):
                 log.log("COMMUNICATION LOST!",logfile)
@@ -337,7 +268,6 @@ async def main_mission_1(drone, vid, sequence, logfile):
             break
 
         # Check if new directory has to be created
-
         if new_dir == True:
             output_dir = create_directory(sequence, logfile)
             set_camera_controls(vid, logfile)
@@ -375,16 +305,13 @@ async def main_mission_1(drone, vid, sequence, logfile):
     return sequence
 
 
-async def main_mission_2(drone, vid, colorProfile, logfile):
+async def main_mission_2(drone, vid, colorProfile, condition, logfile):
 
     min_area = 300
     detectedObject = False
 
     # Telemetry data that will come from the flight controller
     latitude, longitude, altitude, roll, pitch, yaw, _, key = await cm.get_parameters_for_image_processing(drone)
-
-    # Used for indoor testing
-    #latitude, longitude, altitude, roll, pitch, yaw, _, key = await cm.get_parameters_for_indoor_testing(drone)
 
     if key == 1:
         print("COMMUNICATION LOST!")
@@ -394,6 +321,7 @@ async def main_mission_2(drone, vid, colorProfile, logfile):
 
     x_distance, y_distance = locate_object(
         colorProfile,
+        condition,
         hsv,
         frame,
         min_area,

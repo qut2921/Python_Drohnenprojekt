@@ -247,7 +247,7 @@ def pid_update(error, dt, state, kp, ki, kd, max_output=1.0):
     return max(-max_output, min(max_output, output)), state
 
 
-async def precision_land_velocity_pid_method(drone, vid, color, mission_id, logfile):
+async def precision_land_velocity_pid_method(drone, vid, color, condition,mission_id, logfile):
     """
     Precision Landing via velocity control using PID implemented as function.
     Landing occurs when height < 0.5 m.
@@ -281,7 +281,7 @@ async def precision_land_velocity_pid_method(drone, vid, color, mission_id, logf
 
     # 1. Horizontal alignment phase
     while True:
-        delta_x, delta_y = await ip.main_mission_2(drone, vid, color, logfile)
+        delta_x, delta_y = await ip.main_mission_2(drone, vid, color, condition, logfile)
 
         if delta_x is None or delta_y is None:
             log.log("⚠️ No target detected. Stopping movement...", logfile)
@@ -325,7 +325,7 @@ async def precision_land_velocity_pid_method(drone, vid, color, mission_id, logf
 
     # 2. Precision Landing phase with descent
     while True:
-        delta_x, delta_y = await ip.main_mission_2(drone, vid, color, logfile)
+        delta_x, delta_y = await ip.main_mission_2(drone, vid, color, condition,logfile)
 
         if delta_x is None or delta_y is None:
             log.log("⚠️ No target detected. Stopping movement...", logfile)
@@ -478,7 +478,7 @@ async def precision_land_test(drone, mission_id, n_ned, e_ned, logfile):
         await asyncio.sleep(dt)
 
 
-async def indoor_alignment_test(drone, vid, color, logfile):
+async def indoor_alignment_test(drone, vid, color, condition,logfile):
     """
     Indoor Precision Alignment Test – nur horizontale Ausrichtung ohne Sinkflug.
     Positionsfehler (delta_x, delta_y) wird aus dem Tracking- oder Bildsystem über ip.main_mission_2 bezogen.
@@ -506,7 +506,7 @@ async def indoor_alignment_test(drone, vid, color, logfile):
         return
 
     while True:
-        delta_x, delta_y = await ip.main_mission_2(drone, vid, color, logfile)
+        delta_x, delta_y = await ip.main_mission_2(drone, vid, color, condition,logfile)
 
         if delta_x is None or delta_y is None:
             log.log("⚠️ Kein Ziel erkannt. Hover...", logfile)
@@ -588,7 +588,7 @@ async def fly_spiral_search(
             await asyncio.sleep(2)  # Wartezeit für Kamera
 
             # Chechk if the camera detects a target
-            n_ned, e_ned = await ip.main_mission_2(drone, vid, color, logfile)
+            n_ned, e_ned = await ip.main_mission_2(drone, vid, color, condition,logfile)
             if n_ned is not None and e_ned is not None:
                 return True  # Target found, exit the spiral search
 
