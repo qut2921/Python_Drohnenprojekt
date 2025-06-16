@@ -557,6 +557,7 @@ async def fly_spiral_search(
     center_lon,
     vid,
     color,
+    condition,
     target_altitude,
     logfile
 ) -> bool:
@@ -588,8 +589,8 @@ async def fly_spiral_search(
             await asyncio.sleep(2)  # Wartezeit für Kamera
 
             # Chechk if the camera detects a target
-            n_ned, e_ned = await ip.main_mission_2(drone, vid, color, condition,logfile)
-            if n_ned is not None and e_ned is not None:
+            x_distance, y_distance = await ip.main_mission_2(drone, vid, color, condition,logfile)
+            if x_distance is not None and y_distance is not None:
                 return True  # Target found, exit the spiral search
 
             angle += angle_step
