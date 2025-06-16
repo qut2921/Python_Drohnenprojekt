@@ -14,23 +14,28 @@ def index():
         area = request.form.get("area", "")
         geofence = request.form.get("geofence", "")
         target_number = request.form.get("targetNumber", "")   # Neuer Parameter
-        
+        waypoints = request.form.get("waypoints", "")
+
         command = ["python3", "main.py", "--mission", mission, "--landingPosition", landing_position]
         
         if target_number:
             command += ["--targetNumber", target_number]
-        
+
         if target_type:
             command += ["--targetType", target_type]
-            
+
         if area:
             # Join all lines into one string with spaces between coordinates
             normalized_area = " ".join(line.strip() for line in area.splitlines() if line.strip())
             command += ["--area", normalized_area]
-                    
+      
         if geofence:
             normalized_geofence = " ".join(line.strip() for line in geofence.splitlines() if line.strip())
             command += ["--geofence", normalized_geofence]
+
+        if waypoints:
+            normalized_waypoints = " ".join(line.strip() for line in waypoints.splitlines() if line.strip())
+            command += ["--waypoints", normalized_waypoints]
 
         result = subprocess.run(command, capture_output=True, text=True)
         output = result.stdout + result.stderr
