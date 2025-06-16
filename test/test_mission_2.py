@@ -26,6 +26,7 @@ async def mission_2():
     logfile = "mission2.log"
     log.log("Mission 2 gestartet", logfile)
     mission_id = 2
+    land_mode = "default"  # default or offboard
 
     # 1. connect to the drone
     drone = await cl.connect_drone(logfile)
@@ -88,7 +89,7 @@ async def mission_2():
         await cl.default_land_and_disarm(drone, logfile)
     else:    
         #8. precision land
-        await cl.precision_land_velocity_pid_method(drone, vid, color, condition,mission_id, logfile) # oragne target
+        await cl.precision_land_velocity_pid_method(drone, vid, color, condition, land_mode, logfile) # oragne target
 
 
 asyncio.run(mission_2())

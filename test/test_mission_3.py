@@ -27,6 +27,7 @@ async def mission_3():
     logfile = "mission3.log"
     log.log("Mission 3 gestartet", logfile)
     mission_id = 3
+    land_mode = "default"  # default or offboard
 
 
     # 1. connect to the drone
@@ -37,8 +38,11 @@ async def mission_3():
     await cl.arm_drone(drone, logfile)
     await asyncio.sleep(1)
 
-    await drone.param.set_param_float("COM_DISARM_LAND", 0.0)
-    log.log("🔧 Set COM_DISARM_LAND = 0.0 to prevent auto-disarm", logfile)
+    try:
+        await drone.param.set_param_float("COM_DISARM_LAND", 0.0)
+        log.log("🔧 Set COM_DISARM_LAND = 0.0 to prevent auto-disarm", logfile)
+    except Exception as e:
+        log.log(f"⚠️ Could not set COM_DISARM_LAND: {e}", logfile)
 
     # set location 
     mission_locations = [(48.76758, 11.33717, 0),   # blue target location
