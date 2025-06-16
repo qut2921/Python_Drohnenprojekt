@@ -38,7 +38,7 @@ def set_camera_controls(vid):
     vid.set_controls({
         "AeEnable": False,              # Disable auto exposure
         # Set exposure time in microseconds (e.g., 10000 �s = 10ms)
-        "ExposureTime": 250,
+        "ExposureTime": 1000,
         # Set the analog gain (1.0 is default, usually between 1 and 16)
         "AnalogueGain": 1.0
     })
@@ -49,21 +49,22 @@ def set_camera_controls2(vid):
     vid.set_controls({
         "AeEnable": False,              # Disable auto exposure
         # Set exposure time in microseconds (e.g., 10000 �s = 10ms)
-        "ExposureTime": 100,
+        "ExposureTime": 1500,
         # Set the analog gain (1.0 is default, usually between 1 and 16)
         "AnalogueGain": 1.0
     })
+
+    print("Changed Camera Settings! Exposure:1500")
 
 
 def set_camera_controls3(vid):
 
     vid.set_controls({
-        "AeEnable": False,              # Disable auto exposure
+        "AeEnable": True,              # Disable auto exposure
         # Set exposure time in microseconds (e.g., 10000 �s = 10ms)
-        "ExposureTime": 250,
-        # Set the analog gain (1.0 is default, usually between 1 and 16)
-        "AnalogueGain": 1.0
+        "AeTarget": 100,
     })
+    print("Changed Camera Settings! Exposure:AUTO")
 
 
 def start_videoCapture(mission_id, logfile):
@@ -356,12 +357,10 @@ async def main_mission_1(drone, vid, sequence):
 
         if time.time() - camera_control_stamp >= 15 and setting_id == 0:
             set_camera_controls2(vid)
-            print("Changed Camera Settings! Exposure:1000")
             setting_id += 1
 
         if time.time() - camera_control_stamp >= 30 and setting_id == 1:
             set_camera_controls3(vid)
-            print("Changed Camera Settings! Exposure:1500")
             setting_id += 1
 
         if time.time() - camera_control_stamp >= hover_time:

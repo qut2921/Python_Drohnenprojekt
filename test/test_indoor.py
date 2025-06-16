@@ -8,6 +8,38 @@ import control.controller_functions as cl
 import control.logging as log
 import utils.image_processing_raspi as ip
 
+async def test_indoor_prep():
+
+    logfile = "test_indoor_prep.log"
+    log.log("Alignment gestartet", logfile)
+    mission_id = 1
+
+    drone = await cl.connect_drone(logfile)
+    print("Warte auf Verbindung...")
+    async for state in drone.core.connection_state():
+        if state.is_connected:
+            print("Verbunden mit Drohne!")
+            break
+
+    print("Warte auf lokale Positionsdaten...")
+    async for health in drone.telemetry.health():
+        if health.is_local_position_ok:
+            print("Lokale Position bereit!")
+            break
+
+    
+    vid = ip.start_videoCapture(mission_id,logfile)
+    color = 4  # orange target
+    sequence = 0
+    
+    # Start indoor image capture
+    print("Image Capture starten...")
+    await ip.main_mission_1(drone,vid,sequence)
+    print("Image Capture abgeschlossen.")
+    sequence=+1
+    print("Image Capture starten...")
+    await ip.main_mission_1(drone,vid,sequence)
+    print("Image Capture abgeschlossen.")
 
 async def test_indoor():
 
@@ -58,4 +90,5 @@ async def test_indoor():
         print(f"Fehler beim Landen: {e}")
     print("Drohne gelandet.")
 
-asyncio.run(test_indoor())
+#asyncio.run(test_indoor())
+asyncio.run(test_indoor_prep())
