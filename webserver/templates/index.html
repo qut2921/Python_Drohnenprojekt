@@ -32,7 +32,7 @@
 
             <!-- Target Type Dropdown -->
             <div class="mb-3">
-              <label for="targetType" class="form-label">Target Typ</label>
+              <label for="targetType" class="form-label">Target Typ (Mission 1 und 2)</label>
               <select class="form-select" id="targetType" name="targetType">
                 <option value="">Bitte auswählen (nur für Mission 1 und 2)</option>
                 <option value="red">Rot</option>
@@ -43,7 +43,7 @@
 
             <!-- Area Textarea -->
             <div class="mb-3">
-              <label for="area" class="form-label">Suchgebiet (Liste der Eckpunkte: LAT,LONG)</label>
+              <label for="area" class="form-label">Suchgebiet (Liste der Eckpunkte: LAT,LONG) (Mission 1)</label>
               <textarea class="form-control" id="area" name="area" rows="3" placeholder="Jede Zeile: z.B. 48.12345,11.12345&#10;(nur für Mission 1)"></textarea>
             </div>
 
@@ -53,11 +53,42 @@
               <textarea class="form-control" id="geofence" name="geofence" rows="3" placeholder="Jede Zeile: z.B. 48.12345,11.12345 (optional)"></textarea>
             </div>
 
+            <!-- Target Number Input -->
+            <div class="mb-3">
+              <label for="targetNumber" class="form-label">Zielanzahl (Mission 3)</label>
+              <input type="number" class="form-control" id="targetNumber" name="targetNumber" placeholder="z.B. 5 (nur für Mission 3)">
+            </div>
+
             <button type="submit" class="btn btn-primary">Mission starten</button>
           </form>
+
+          {% if output %}
+          <div class="mt-4">
+            <h4>Output</h4>
+            <pre>{{ output }}</pre>
+          </div>
+          {% endif %}
+
+          <div class="mt-4">
+            <h4>Live Log</h4>
+            <pre id="log">Lade Log...</pre>
+          </div>
+
         </div>
       </div>
     </div>
+
+    <script>
+      function fetchLogs() {
+        fetch("/logs")
+          .then(response => response.text())
+          .then(text => {
+            document.getElementById("log").textContent = text;
+          });
+      }
+      setInterval(fetchLogs, 100);
+      fetchLogs();
+    </script>
 
   </body>
 </html>
