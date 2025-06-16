@@ -10,6 +10,7 @@ import cv2
 import utils.colors as colors
 import utils.gps_calculator as gps
 import utils.shape_detector as sd
+import utils.list_filter as lf
 
 
 def read_image_and_convert(output_dir, image_name):
@@ -44,7 +45,7 @@ def unsharp_masking(image):
 
 def locate_object_and_save(
         output_dir, image_filename,
-        colorProfile, hsv,
+        colorProfile, condition, hsv,
         frame, min_area, detectedObject,
         pitch, roll, altitude, heading, lat_position, long_position):
     """
@@ -54,15 +55,15 @@ def locate_object_and_save(
     """
     # mask for the specified color profile
     if colorProfile == 1:
-        name, lower_red1, upper_red1 = colors.set_colorProfilesSun(1)
-        name, lower_red2, upper_red2 = colors.set_colorProfilesSun(3)
+        name, lower_red1, upper_red1 = colors.set_colorProfiles(1, condition)
+        name, lower_red2, upper_red2 = colors.set_colorProfiles(3, condition)
         mask1 = cv2.inRange(hsv, lower_red1, upper_red1)
         mask2 = cv2.inRange(hsv, lower_red2, upper_red2)
         mask = cv2.bitwise_or(mask1, mask2)
         mask = cv2.threshold(mask, 127, 255, cv2.THRESH_BINARY)[1]
 
     else:
-        name, hsv_lower, hsv_upper = colors.set_colorProfiles(colorProfile)
+        name, hsv_lower, hsv_upper = colors.set_colorProfiles(colorProfile, condition)
         mask = cv2.inRange(hsv, hsv_lower, hsv_upper)
 
     # remove noise from mask
@@ -94,6 +95,8 @@ def locate_object_and_save(
                     long_position,
                     frame)
 
+                frame, shape = sd.detect_shape(frame, hsv, x, y, w, h, colorProfile, condition)
+
                 # draw rectangle and text
                 frame = draw_rectangle_with_text(
                     frame,
@@ -102,10 +105,9 @@ def locate_object_and_save(
                     y,
                     w,
                     h,
-                    x_distance,
-                    y_distance)
-                
-                frame, shape = sd.detect_shape(frame, hsv, x, y, w, h, colorProfile)
+                    lat_object,
+                    long_object,
+                    shape)
 
                 with open(f"{output_dir}/image_processed.csv", "a") as processed_log_file:
                     processed_log_file.write(
@@ -124,9 +126,26 @@ def locate_object_and_save(
     return frame
 
 
+def change_output_and_create_folder(color_profile):
+    """Create a directory for saving processed images.
+    """
+
+    if color_profile == 1:
+        output_dir = f"Found_Object/red"
+    elif color_profile == 2:
+        output_dir = f"Found_Object/yellow"
+    elif color_profile == 0:
+        output_dir = f"Found_Object/blue"
+
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+        print("Creating directory" + output_dir + "...")
+    return output_dir
+
+
 def draw_rectangle_with_text(
         frame, name, x, y, w, h,
-        x_distance, y_distance):
+        latitude, longitude, shape):
     """
     Draw a rectangle around the detected object and add text with its coordinates.
     If the text goes out of bounds, adjust its position and color.
@@ -139,7 +158,7 @@ def draw_rectangle_with_text(
     text_colour = (0, 0, 255)  # Red
 
     # Write text and get width and size
-    text = f"{name} ({x}, {y}) ({x_distance:.2f} m, {y_distance:.2f} m)"
+    text = f"{name}, {shape}, ({latitude:.6f} lat, {longitude:.6f} long)"
     (text_width, text_height), _ = cv2.getTextSize(text, font, scale, thickness)
 
     # Set default text position
@@ -178,7 +197,7 @@ def remove_noise(mask):
     return mask
 
 
-def main_mission_1_post_processing(sequence, colorProfile, min_area):
+def main_mission_1_post_processing(sequence, colorProfile, condition, min_area):
     """
     After acquiring the images, this function processes and locates
     the object by reading the CSV files. In case an object is located, a 
@@ -189,7 +208,7 @@ def main_mission_1_post_processing(sequence, colorProfile, min_area):
     for i in range(sequence):
         with open(f"BildsequenzTest_{i}/image_saved.csv", "r") as log_file:
             lines = log_file.readlines()
-
+        print(f"Processing sequence {i}...")
         # Process each line in the CSV file
         for line in lines:
             # Split the line at ", "" to extract data
@@ -201,16 +220,21 @@ def main_mission_1_post_processing(sequence, colorProfile, min_area):
 
             base_path = '/media/aviator/INTENSO/'
             output_dir = output_dir.replace(base_path, '')
+            
 
             # Read the image and convert it to HSV color space
             hsv, frame = read_image_and_convert(output_dir, image_filename)
             detectedObject = False
+
+            # Save every color in a separate directory
+            output_dir = change_output_and_create_folder(colorProfile)
 
             # Locate the object and save locations in CSV file
             frame = locate_object_and_save(
                 output_dir,
                 image_filename,
                 colorProfile,
+                condition,
                 hsv,
                 frame,
                 min_area,
@@ -226,3 +250,4 @@ def main_mission_1_post_processing(sequence, colorProfile, min_area):
             # Save the processed image
             cv2.imwrite(output_dir + '/processed_' + image_filename, frame)
             print("Captured frame...")
+        

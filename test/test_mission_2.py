@@ -45,6 +45,7 @@ async def mission_2():
     # 3. Start camera
     vid = ip.start_videoCapture(mission_id,logfile)
     color = 4  # orange target
+    condition = "cloudy"  # condition for color profile
 
     # 4. takeoff to 5 meters
     target_altitude = 5.0
@@ -66,7 +67,7 @@ async def mission_2():
     center_lat = position.latitude_deg
     center_lon = position.longitude_deg
 
-    x_distance, y_distance = await ip.main_mission_2(drone, vid, color, logfile) # orange target
+    x_distance, y_distance = await ip.main_mission_2(drone, vid, color, condition,logfile) # orange target
     if x_distance is None or y_distance is None:
         log.log("TARGET NOT FOUND", logfile)
         bool = await cl.fly_spiral_search(drone, center_lat,
@@ -87,7 +88,7 @@ async def mission_2():
         await cl.default_land_and_disarm(drone, logfile)
     else:    
         #8. precision land
-        await cl.precision_land_velocity_pid_method(drone, vid, color, mission_id, logfile) # oragne target
+        await cl.precision_land_velocity_pid_method(drone, vid, color, condition,mission_id, logfile) # oragne target
 
 
 asyncio.run(mission_2())
