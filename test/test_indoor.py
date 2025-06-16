@@ -1,3 +1,6 @@
+import sys
+import os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 import asyncio
 from mavsdk import system
 from mavsdk.offboard import VelocityNedYaw
@@ -26,16 +29,33 @@ async def test_indoor():
             break
 
     
-    vid = ip.start_videoCapture(2,logfile)
+    vid = ip.start_videoCapture(2, logfile)
     color = 4  # orange target
 
     # Start indoor alignment test
-    print("Alignment starten...")
-    await cl.indoor_alignment_test(drone, vid, color, log)
+    try:
+        print("Alignment starten...")
+        await cl.indoor_alignment_test(drone, vid, color, log)
+    except Exception as e:
+        print(f"Fehler beim Indoor-Alignment-Test: {e}")
+        print("Versuche, die Drohne zu landen...")
+        await drone.action.land()
+        print("Drohne gelandet.")
 
-    # Drohne schwebt weiterhin in der Luft
-    while True:
+    # 3s warten, um die Drohne zu stabilisieren
+    t = 0.0
+    while t < 3.0:
+        print(f"Warte {3 - t} Sekunden...")
         await drone.offboard.set_velocity_ned(VelocityNedYaw(0, 0, 0, 0))
         await asyncio.sleep(0.1)
+        t += 0.1
+
+    # Drohne versucht zu landen
+    try:
+        print("Drohne soll landen...")
+        await drone.action.land()
+    except Exception as e:
+        print(f"Fehler beim Landen: {e}")
+    print("Drohne gelandet.")
 
 asyncio.run(test_indoor())
