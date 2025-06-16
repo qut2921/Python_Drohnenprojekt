@@ -473,7 +473,8 @@ async def indoor_alignment_test(drone, vid, color, logfile):
     state_east = {"integral": 0.0, "prev_error": 0.0}
     stable_time = 0.0
 
-    await drone.offboard.set_velocity_ned(VelocityNedYaw(0, 0, 0, 0))
+    await drone.offboard.set_velocity_ned(VelocityNedYaw(0.0, 0.0, 0.0, 0.0))
+    print("Setpoint Set")
     await asyncio.sleep(0.1)
 
     try:

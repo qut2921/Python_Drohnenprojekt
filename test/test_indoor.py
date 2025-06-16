@@ -21,11 +21,11 @@ async def test_indoor_prep():
             print("Verbunden mit Drohne!")
             break
 
-    print("Warte auf lokale Positionsdaten...")
-    async for health in drone.telemetry.health():
-        if health.is_local_position_ok:
-            print("Lokale Position bereit!")
-            break
+    #print("Warte auf lokale Positionsdaten...")
+    #async for health in drone.telemetry.health():
+     #   if health.is_local_position_ok:
+      #      print("Lokale Position bereit!")
+       #     break
 
     
     vid = ip.start_videoCapture(mission_id,logfile)
@@ -54,11 +54,11 @@ async def test_indoor():
             print("Verbunden mit Drohne!")
             break
 
-    print("Warte auf lokale Positionsdaten...")
-    async for health in drone.telemetry.health():
-        if health.is_local_position_ok:
-            print("Lokale Position bereit!")
-            break
+    #print("Warte auf lokale Positionsdaten...")
+    #async for health in drone.telemetry.health():
+     #   if health.is_local_position_ok:
+      #      print("Lokale Position bereit!")
+       #     break
 
     
     vid = ip.start_videoCapture(2, logfile)
@@ -67,7 +67,7 @@ async def test_indoor():
     # Start indoor alignment test
     try:
         print("Alignment starten...")
-        await cl.indoor_alignment_test(drone, vid, color, log)
+        await cl.indoor_alignment_test(drone, vid, color, logfile)
     except Exception as e:
         print(f"Fehler beim Indoor-Alignment-Test: {e}")
         print("Versuche, die Drohne zu landen...")
@@ -78,7 +78,7 @@ async def test_indoor():
     t = 0.0
     while t < 3.0:
         print(f"Warte {3 - t} Sekunden...")
-        await drone.offboard.set_velocity_ned(VelocityNedYaw(0, 0, 0, 0))
+        await drone.offboard.set_velocity_ned(VelocityNedYaw(0.0, 0.0, 0.0, 0.0))
         await asyncio.sleep(0.1)
         t += 0.1
 
@@ -90,5 +90,5 @@ async def test_indoor():
         print(f"Fehler beim Landen: {e}")
     print("Drohne gelandet.")
 
-#asyncio.run(test_indoor())
-asyncio.run(test_indoor_prep())
+asyncio.run(test_indoor())
+#asyncio.run(test_indoor_prep())
