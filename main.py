@@ -29,18 +29,23 @@ parser.add_argument('--targetType', type=str, choices=["red", "yellow", "blue"],
 parser.add_argument('--area', type=parse_coord_list, help="Liste der Eckpunkte des Suchgebietes (LAT,LONG)")
 parser.add_argument('--geofence', type=parse_coord_list, help="Liste der Eckpunkte des Geofence (LAT,LONG)")
 parser.add_argument('--targetNumber', type=int, help="Anzahl der Targets")
+parser.add_argument('--waypoints', type=parse_coord_list, help="Liste der Wegpunkte (LAT,LONG)")
 args = parser.parse_args()
 
 # Check Arguments
 
 if args.mission == 1:
     print("Mission 1")
-    # required: landingPosition, targetType, area
-    if not(args.landingPosition and args.targetType and args.area):
-        parser.error("Mission 1 erfordert landingPosition, targetType und area")
-    print(f"Landeposition: {args.landingPosition}, Zieltyp: {args.targetType}, Suchgebiet: {args.area}")
+    # required: landingPosition, targetType and (area XOR waypoints)
+    if not (args.landingPosition and args.targetType and ((args.area and not args.waypoints) or (args.waypoints and not args.area))):
+        parser.error("Mission 1 erfordert landingPosition, targetType und entweder area oder waypoints (exklusiv)")
+    print(f"Landeposition: {args.landingPosition}, Zieltyp: {args.targetType}")
+    if args.area:
+        print(f"Suchgebiet: {args.area}")
+    if args.waypoints:
+        print(f"Wegpunkte: {args.waypoints}")
         
-    #mission1_mapping.run(args.landingPosition, args.targetType, args.area, args.geofence)
+    # mission1_mapping.run(args.landingPosition, args.targetType, args.area or args.waypoints, args.geofence)
 elif args.mission == 2:
     print("Mission 2")
     # required: landingPosition, targetType
