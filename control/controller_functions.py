@@ -254,12 +254,13 @@ async def precision_land_velocity_pid_method(drone, vid, color, mission_id, logf
     """
 
     pid_params = {"kp": 0.8, "ki": 0.05, "kd": 0.1}  # PID parameters
-    max_speed = 1.0  # m/s – max speed
+    max_speed = 0.5  # m/s – max speed
     descent_speed = 0.5  # m/s
     landing_threshold = 2  # m
     alignment_threshold = 0.1  # m threshold for alignment
     alignment_stable_time = 2.0  # seconds to consider alignment stable
     dt = 0.1  # time step in seconds
+    reset_counter = 0  # Counter for reset attempts
 
     # Initialize PID states
     state_north = {"integral": 0.0, "prev_error": 0.0}
@@ -267,7 +268,8 @@ async def precision_land_velocity_pid_method(drone, vid, color, mission_id, logf
     stable_time = 0.0
 
     # 0. Start Offboard mode
-    await drone.offboard.set_velocity_ned(VelocityNedYaw(0, 0, 0, 0))
+    await drone.offboard.set_velocity_ned(VelocityNedYaw(0.0, 0.0, 0.0, 0.0))
+    log.log("🔄 Setpoint for Offboard Mode set", logfile)
     await asyncio.sleep(0.1)
 
     try:
@@ -279,17 +281,27 @@ async def precision_land_velocity_pid_method(drone, vid, color, mission_id, logf
 
     # 1. Horizontal alignment phase
     while True:
-        delta_north, delta_east = await ip.main_mission_2(drone, vid, color)
+        delta_x, delta_y = await ip.main_mission_2(drone, vid, color, logfile)
 
-        if delta_north is None or delta_east is None:
+        if delta_x is None or delta_y is None:
             log.log("⚠️ No target detected. Stopping movement...", logfile)
             await drone.offboard.set_velocity_ned(VelocityNedYaw(0.0, 0.0, 0.0, 0.0))
             stable_time = 0.0
             await asyncio.sleep(dt)
+            reset_counter += 1
+            
+            if reset_counter > 500:
+                log.log("⚠️ Too many reset attempts. Stopping alignment phase.", logfile)
+                await drone.action.land()
+                return
+            
             continue
 
-        v_north, state_north = pid_update(delta_north, dt, state_north, **pid_params, max_output=max_speed)
-        v_east,  state_east  = pid_update(delta_east,  dt, state_east,  **pid_params, max_output=max_speed)
+        
+        reset_counter = 0  # Reset the counter if we have valid target data
+
+        v_north, state_north = pid_update(delta_x, dt, state_north, **pid_params, max_output=max_speed)
+        v_east,  state_east  = pid_update(delta_y,  dt, state_east,  **pid_params, max_output=max_speed)
 
         await drone.offboard.set_velocity_ned(VelocityNedYaw(
             north_m_s=v_north,
@@ -298,11 +310,12 @@ async def precision_land_velocity_pid_method(drone, vid, color, mission_id, logf
             yaw_deg=0.0
         ))
 
-        print(f"\r🟡 Aligning: vN={v_north:.2f}, vE={v_east:.2f} – ΔN={delta_north:.2f}, ΔE={delta_east:.2f}", end="")
+        print(f"\r🟡 Aligning: vN={v_north:.2f}, vE={v_east:.2f} – ΔN={delta_x:.2f}, ΔE={delta_y:.2f}", end="")
 
-        if abs(delta_north) < alignment_threshold and abs(delta_east) < alignment_threshold:
+        if abs(delta_x) < alignment_threshold and abs(delta_y) < alignment_threshold:
             stable_time += dt
             if stable_time >= alignment_stable_time:
+                await drone.offboard.set_velocity_ned(VelocityNedYaw(0.0, 0.0, 0.0, 0.0))
                 log.log("✅ Alignment complete. Starting descent.\n", logfile)
                 break
         else:
@@ -312,16 +325,24 @@ async def precision_land_velocity_pid_method(drone, vid, color, mission_id, logf
 
     # 2. Precision Landing phase with descent
     while True:
-        delta_north, delta_east = await ip.main_mission_2(drone, vid, color)
+        delta_x, delta_y = await ip.main_mission_2(drone, vid, color, logfile)
 
-        if delta_north is None or delta_east is None:
+        if delta_x is None or delta_y is None:
             log.log("⚠️ No target detected. Stopping movement...", logfile)
             await drone.offboard.set_velocity_ned(VelocityNedYaw(0.0, 0.0, 0.0, 0.0))
             await asyncio.sleep(dt)
+            reset_counter += 1
+
+            if reset_counter > 500:
+                log.log("⚠️ Too many reset attempts. Stopping alignment phase.", logfile)
+                await drone.action.land()
+                return
+
             continue
 
-        v_north, state_north = pid_update(delta_north, dt, state_north, **pid_params, max_output=max_speed)
-        v_east,  state_east  = pid_update(delta_east,  dt, state_east,  **pid_params, max_output=max_speed)
+        reset_counter = 0  # Reset the counter if we have valid target data
+        v_north, state_north = pid_update(delta_x, dt, state_north, **pid_params, max_output=max_speed)
+        v_east,  state_east  = pid_update(delta_y,  dt, state_east,  **pid_params, max_output=max_speed)
 
         await drone.offboard.set_velocity_ned(VelocityNedYaw(
             north_m_s=v_north,
@@ -382,15 +403,15 @@ async def precision_land_test(drone, mission_id, n_ned, e_ned, logfile):
         return
 
     # Aktueller Offset
-    delta_north = n_ned
-    delta_east = e_ned
+    delta_x = n_ned
+    delta_y = e_ned
 
     # 1. Horizontal alignment phase
     while True:
         v_north, state_north = pid_update(
-            delta_north, dt, state_north, **pid_params, max_output=max_speed)
+            delta_x, dt, state_north, **pid_params, max_output=max_speed)
         v_east,  state_east = pid_update(
-            delta_east, dt, state_east, **pid_params, max_output=max_speed)
+            delta_y, dt, state_east, **pid_params, max_output=max_speed)
 
         # Drohne fliegt und korrigiert Position
         await drone.offboard.set_velocity_ned(VelocityNedYaw(
@@ -400,13 +421,13 @@ async def precision_land_test(drone, mission_id, n_ned, e_ned, logfile):
             yaw_deg=0.0
         ))
 
-        print(f"\r🟡 Aligning: vN={v_north:.2f}, vE={v_east:.2f} – ΔN={delta_north:.2f}, ΔE={delta_east:.2f}", end="")
+        print(f"\r🟡 Aligning: vN={v_north:.2f}, vE={v_east:.2f} – ΔN={delta_x:.2f}, ΔE={delta_y:.2f}", end="")
 
         # Simulierter Effekt der Korrektur auf den Offset
-        delta_north -= v_north * dt
-        delta_east -= v_east * dt
+        delta_x -= v_north * dt
+        delta_y -= v_east * dt
 
-        if abs(delta_north) < alignment_threshold and abs(delta_east) < alignment_threshold:
+        if abs(delta_x) < alignment_threshold and abs(delta_y) < alignment_threshold:
             stable_time += dt
             if stable_time >= alignment_stable_time:
                 await drone.offboard.set_velocity_ned(VelocityNedYaw(0, 0, 0, 0))
@@ -420,9 +441,9 @@ async def precision_land_test(drone, mission_id, n_ned, e_ned, logfile):
     # 2. Precision Landing phase with descent
     while True:
         v_north, state_north = pid_update(
-            delta_north, dt, state_north, **pid_params, max_output=max_speed)
+            delta_x, dt, state_north, **pid_params, max_output=max_speed)
         v_east,  state_east = pid_update(
-            delta_east, dt, state_east, **pid_params, max_output=max_speed)
+            delta_y, dt, state_east, **pid_params, max_output=max_speed)
 
         await drone.offboard.set_velocity_ned(VelocityNedYaw(
             north_m_s=v_north,
@@ -435,8 +456,8 @@ async def precision_land_test(drone, mission_id, n_ned, e_ned, logfile):
         current_alt = position.relative_altitude_m
         print(f"\r✈️ vN={v_north:.2f}, vE={v_east:.2f}, Alt={current_alt:.2f} m", end="")
 
-        delta_north -= v_north * dt
-        delta_east -= v_east * dt
+        delta_x -= v_north * dt
+        delta_y -= v_east * dt
 
         if current_alt < landing_threshold:
             log.log("\n✅ Altitude < 0.5 m → Landing\n", logfile)
@@ -460,7 +481,7 @@ async def precision_land_test(drone, mission_id, n_ned, e_ned, logfile):
 async def indoor_alignment_test(drone, vid, color, logfile):
     """
     Indoor Precision Alignment Test – nur horizontale Ausrichtung ohne Sinkflug.
-    Positionsfehler (delta_north, delta_east) wird aus dem Tracking- oder Bildsystem über ip.main_mission_2 bezogen.
+    Positionsfehler (delta_x, delta_y) wird aus dem Tracking- oder Bildsystem über ip.main_mission_2 bezogen.
     """
 
     pid_params = {"kp": 0.8, "ki": 0.05, "kd": 0.1}
@@ -485,18 +506,18 @@ async def indoor_alignment_test(drone, vid, color, logfile):
         return
 
     while True:
-        delta_north, delta_east = await ip.main_mission_2(drone, vid, color)
+        delta_x, delta_y = await ip.main_mission_2(drone, vid, color, logfile)
 
-        if delta_north is None or delta_east is None:
+        if delta_x is None or delta_y is None:
             log.log("⚠️ Kein Ziel erkannt. Hover...", logfile)
             await drone.offboard.set_velocity_ned(VelocityNedYaw(0.0, 0.0, 0.0, 0.0))
             await asyncio.sleep(dt)
             continue
 
         v_north, state_north = pid_update(
-            delta_north, dt, state_north, **pid_params, max_output=max_speed)
+            delta_x, dt, state_north, **pid_params, max_output=max_speed)
         v_east, state_east = pid_update(
-            delta_east, dt, state_east, **pid_params, max_output=max_speed)
+            delta_y, dt, state_east, **pid_params, max_output=max_speed)
 
         await drone.offboard.set_velocity_ned(VelocityNedYaw(
             north_m_s=v_north,
@@ -505,9 +526,9 @@ async def indoor_alignment_test(drone, vid, color, logfile):
             yaw_deg=0.0
         ))
 
-        print(f"\r🟡 Aligning: vN={v_north:.2f}, vE={v_east:.2f} – ΔN={delta_north:.2f}, ΔE={delta_east:.2f}", end="")
+        print(f"\r🟡 Aligning: vN={v_north:.2f}, vE={v_east:.2f} – ΔN={delta_x:.2f}, ΔE={delta_y:.2f}", end="")
 
-        if abs(delta_north) < alignment_threshold and abs(delta_east) < alignment_threshold:
+        if abs(delta_x) < alignment_threshold and abs(delta_y) < alignment_threshold:
             stable_time += dt
             if stable_time >= alignment_stable_time:
                 await drone.offboard.set_velocity_ned(VelocityNedYaw(0.0, 0.0, 0.0, 0.0))
@@ -567,7 +588,7 @@ async def fly_spiral_search(
             await asyncio.sleep(2)  # Wartezeit für Kamera
 
             # Chechk if the camera detects a target
-            n_ned, e_ned = await ip.main_mission_2(drone, vid, color)
+            n_ned, e_ned = await ip.main_mission_2(drone, vid, color, logfile)
             if n_ned is not None and e_ned is not None:
                 return True  # Target found, exit the spiral search
 
