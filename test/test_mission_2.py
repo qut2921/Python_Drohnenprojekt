@@ -24,7 +24,7 @@ async def mission_2():
 
     """
     # Start logging
-    logfile = "mission2.log"
+    logfile = "logs/mission2.log"
     log.log("Mission 2 gestartet", logfile)
     mission_id = 2
     land_mode = "default"  # default or offboard

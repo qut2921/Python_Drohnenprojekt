@@ -24,7 +24,7 @@ async def mission_1():
         8. Land and disarm at home location
     """
     # Start logging
-    logfile = "mission1.log"
+    logfile = "logs/mission1.log"
     log.log("Mission 1 gestartet", logfile)
 
     # 1. Connect to the drone

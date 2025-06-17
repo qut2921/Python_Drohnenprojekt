@@ -17,7 +17,7 @@ import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 
-STATE_FILE = "mission1_state.json"
+STATE_FILE = "mission_states.json"
 
 
 async def connect_drone(logfile) -> System:
@@ -28,7 +28,6 @@ async def connect_drone(logfile) -> System:
         System: The connected MAVSDK drone object.
     """
     drone = System()
-    print("----------------------")
     log.log("🔄 Connecting to drone...", logfile)
     try:
         # Connect to the drone to SITL
@@ -341,6 +340,7 @@ async def precision_land_velocity_pid_method(drone, vid, color, condition, mode,
             continue
 
         reset_counter = 0  # Reset the counter if we have valid target data
+
         v_north, state_north = pid_update(delta_x, dt, state_north, **pid_params, max_output=max_speed)
         v_east,  state_east  = pid_update(delta_y,  dt, state_east,  **pid_params, max_output=max_speed)
 
@@ -356,7 +356,7 @@ async def precision_land_velocity_pid_method(drone, vid, color, condition, mode,
         print(f"\r✈️ vN={v_north:.2f}, vE={v_east:.2f}, Alt={current_alt:.2f} m", end="")
 
         if current_alt < landing_threshold:
-            log.log("\n✅ Altitude < 0.5 m → Landing\n", logfile)
+            log.log("\n✅ Altitude < 2 m → Landing\n", logfile)
 
             if mode == "default":
                 # Default landing and disarm
@@ -587,7 +587,7 @@ async def fly_spiral_search(
             await asyncio.sleep(2)  # Wartezeit für Kamera
 
             # Chechk if the camera detects a target
-            x_distance, y_distance = await ip.main_mission_2(drone, vid, color, condition,logfile)
+            x_distance, y_distance = await ip.main_mission_2(drone, vid, color, condition, logfile)
             if x_distance is not None and y_distance is not None:
                 return True  # Target found, exit the spiral search
 
