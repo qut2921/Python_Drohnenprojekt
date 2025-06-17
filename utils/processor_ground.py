@@ -133,11 +133,11 @@ def change_output_and_create_folder(color_profile):
     """
 
     if color_profile == 1:
-        output_dir = f"Found_Object/red"
+        output_dir = f"Mission1/Found_Object/red"
     elif color_profile == 2:
-        output_dir = f"Found_Object/yellow"
+        output_dir = f"Mission1/Found_Object/yellow"
     elif color_profile == 0:
-        output_dir = f"Found_Object/blue"
+        output_dir = f"Mission1/Found_Object/blue"
 
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
@@ -208,7 +208,7 @@ def main_mission_1_post_processing(sequence, colorProfile, condition, min_area):
 
     # Read the CSV file with telemetry data
     for i in range(sequence):
-        with open(f"BildsequenzTest_{i}/image_saved.csv", "r") as log_file:
+        with open(f"Mission1/Bildsequenz_{i}/image_saved.csv", "r") as log_file:
             lines = log_file.readlines()
         print(f"Processing sequence {i}...")
         # Process each line in the CSV file

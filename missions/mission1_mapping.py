@@ -12,7 +12,7 @@ import os
 
 async def run(landingPosition, waypoints, weatherConditions, geofence=None):
     # Hier könnte der Code für die Ausführung der Mission 1 stehen
-    print(f"Mission 1 gestartet mit Landeposition: {landingPosition}, Zieltyp: {targetType}, Wegpunkte: {waypoints}, Wetterbedingungen: {weatherConditions}")
+    print(f"Mission 1 gestartet mit Landeposition: {landingPosition}, Wegpunkte: {waypoints}, Wetterbedingungen: {weatherConditions}")
     if geofence:
         print(f"Geofence aktiviert mit Punkten: {geofence}")
     else:

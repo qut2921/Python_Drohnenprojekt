@@ -18,25 +18,25 @@ def set_colorProfiles(n, condition):
 
     if condition == "cloudy":
         if n == 0:
-            name = "Blau"
+            name = "Blue"
             hsv_lower = (0, 167, 0)
             hsv_upper = (10, 255, 255)
             return (name, hsv_lower, hsv_upper)
 
         if n == 1:
-            name = "Rot"
+            name = "Red"
             hsv_lower = (113, 67, 0)
             hsv_upper = (180, 255, 255)
             return (name, hsv_lower, hsv_upper)
 
         if n == 2:
-            name = "Gelb"
+            name = "Yellow"
             hsv_lower = (62, 31, 69)
             hsv_upper = (84, 160, 255)
             return (name, hsv_lower, hsv_upper)
 
         if n == 3:
-            name = "Rot2"
+            name = "Red2"
             hsv_lower = (180, 255, 0)
             hsv_upper = (180, 255, 255)
             return (name, hsv_lower, hsv_upper)
@@ -62,25 +62,25 @@ def set_colorProfiles(n, condition):
 
     elif condition == "sunny":
         if n == 0:
-            name = "Blau"
+            name = "Blue"
             hsv_lower = (0, 167, 0)
             hsv_upper = (10, 255, 255)
             return (name, hsv_lower, hsv_upper)
 
         if n == 1:
-            name = "Rot"
+            name = "Red"
             hsv_lower = (113, 67, 0)
             hsv_upper = (180, 255, 255)
             return (name, hsv_lower, hsv_upper)
 
         if n == 2:
-            name = "Gelb"
+            name = "Yellow"
             hsv_lower = (62, 31, 69)
             hsv_upper = (84, 160, 255)
             return (name, hsv_lower, hsv_upper)
 
         if n == 3:
-            name = "Rot2"
+            name = "Red2"
             hsv_lower = (6, 0, 0)
             hsv_upper = (0, 255, 255)
             return (name, hsv_lower, hsv_upper)
@@ -106,3 +106,14 @@ def set_colorProfiles(n, condition):
     else:
         raise ValueError("Invalid condition. Must be 'cloudy' or 'sunny'.")
 
+def map_color_to_id(color):
+    if color == "blue":
+        return 0
+    elif color == "red":
+        return 1
+    elif color == "yellow":
+        return 2
+    elif color == "orange":
+        return 4
+    else:
+        raise ValueError("Invalid color. Must be 'blue', 'red', 'yellow', or 'orange'.")
