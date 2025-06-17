@@ -42,10 +42,28 @@ def index():
 
     return render_template("index.html", output=output)
 
-@app.route("/logs")
-def get_logs():
+@app.route("/logs/mission1")
+def get_logs1():
     try:
-        with open("logs/mission.log", "r") as f:
+        with open("logs/mission1.log", "r") as f:
+            log_content = f.read()
+    except Exception as e:
+        log_content = f"Fehler beim Lesen der Log-Datei: {str(e)}"
+    return log_content
+
+@app.route("/logs/mission2")
+def get_logs2():
+    try:
+        with open("logs/mission2.log", "r") as f:
+            log_content = f.read()
+    except Exception as e:
+        log_content = f"Fehler beim Lesen der Log-Datei: {str(e)}"
+    return log_content
+
+@app.route("/logs/mission3")
+def get_logs3():
+    try:
+        with open("logs/mission3.log", "r") as f:
             log_content = f.read()
     except Exception as e:
         log_content = f"Fehler beim Lesen der Log-Datei: {str(e)}"

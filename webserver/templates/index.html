@@ -107,7 +107,12 @@
 
 		<script>
 			function fetchLogs() {
-				fetch("/logs")
+				mission = document.getElementById("mission").value;
+				if (!mission) {
+					document.getElementById("log").textContent = "Bitte wählen Sie eine Mission aus.";
+					return;
+				}
+				fetch(`/logs/mission${mission}`)
 				.then(response => response.text())
 				.then(text => {
 					document.getElementById("log").textContent = text;
