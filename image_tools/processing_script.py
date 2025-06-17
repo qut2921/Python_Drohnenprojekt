@@ -4,10 +4,10 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 import utils.processor_ground as processor
 import utils.list_filter as lf
 
-min_area = 300
+min_area = 1000
 # Blue = 0, Red = 1, Yellow = 2, Orange = 4
 sequence = 1
-condition = "sunny" # condition for color profile only input "cloudy" or "sunny"
+condition = "cloudy" # condition for color profile only input "cloudy" or "sunny"
 
 for i in range(4):
     if i == 3:
