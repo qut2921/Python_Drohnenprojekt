@@ -66,3 +66,37 @@ def calculate_gps(
     lon_object = long_position + delta_lon  # [degrees]
 
     return x_distance, y_distance, lat_object, lon_object, n_ned, e_ned
+
+
+def calculate_frame_dimensions(altitude, lat_position):
+    """Calculate the frame dimensions based on GPS position.
+    
+    Returns the width and height of the frame in GPS coordinates.
+    The width and height are calculated based on the camera's field of view and the altitude of the drone and are returned in degrees of latitude and longitude.
+    The calculations assume a flat Earth model for small distances.
+    This is a simplification that works for small distances, which is the case for the drone's operational altitude.
+    
+    Args:
+        altitude (float): Altitude of the drone in meters.
+        lat_position (float): Current latitude position in degrees.
+    Returns:
+        tuple: A tuple containing the width and height of the frame in GPS coordinates.
+    """
+
+    # Camera sensor properties
+    FOV_horizontal = 66  # [degrees]
+    FOV_vertical = 41  # [degrees]
+
+    # Calculate distances in frame coordinate system
+    x_distance = altitude * np.tan(np.radians(FOV_horizontal))  # [m]
+    y_distance = altitude * np.tan(np.radians(FOV_vertical))  # [m]
+    
+    # Calculate GPS coordinates for small distances https://kompf.de/gps/distcalc.html
+    delta_lat = x_distance / 111320  # [degrees]
+    delta_lon = y_distance / \
+        (111320 * np.cos(np.radians(lat_position)))  # [degrees]
+        
+    image_width_coord = delta_lon * 2  # [degrees]
+    image_height_coord = delta_lat * 2  # [degrees]
+
+    return image_height_coord, image_width_coord

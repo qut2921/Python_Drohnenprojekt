@@ -7,6 +7,7 @@ This module provides a function to read image metadata from a YAML file.
 import os
 import yaml
 from PIL import Image
+import gps_calculator as gps
 
 def load_image_data(yaml_path: str):
     """
@@ -14,11 +15,10 @@ def load_image_data(yaml_path: str):
     
     The YAML file should contain a list of dictionaries where each dictionary represents an image.
     Expected keys for each image:
-      - 'dateiname'          : Filename of the image.
-      - 'mittelpunkt'        : The center coordinates as a list or tuple [x, y].
-      - 'x_ausdehnung'       : Width of the image.
-      - 'y_ausdehnung'       : Height of the image.
-      
+      - 'filename'          : Filename of the image.
+      - 'centre'             : The center coordinates as a list or tuple [lat, lon].
+      - 'altitude'           : Altitude above ground of the camera.
+
     Parameters:
         yaml_path (str): The file path to the YAML file.
         
@@ -29,13 +29,13 @@ def load_image_data(yaml_path: str):
         data = yaml.safe_load(file)
     return data
 
-def compose_images(image_data, images_folder: str, scale: float = 1000):
+def compose_images(image_data, images_folder: str, scale: float = 1000000):
     """
     Compose images into a single composite image based on their center coordinates and extents.
-    The provided values (mittelpunkt and extents) are treated as coordinates. A scaling factor is applied to convert these
+    The provided values (centre and extents) are treated as coordinates. A scaling factor is applied to convert these
     coordinate units into pixel units.
-    
-    Each image is pasted such that its center aligns with the specified 'mittelpunkt'.
+
+    Each image is pasted such that its center aligns with the specified 'centre'.
     The composite image is sized to cover the scaled coordinate bounding box.
     If images overlap, they are overlayed.
     
@@ -43,7 +43,7 @@ def compose_images(image_data, images_folder: str, scale: float = 1000):
         image_data (list): List of dictionaries containing image metadata.
         images_folder (str): Folder path where the image files are stored.
         scale (float): Multiplicative factor to convert coordinate units to pixels.
-                       Default value is 1000.
+                       Default value is 1000000.
         
     Returns:
         Image: A PIL.Image object with the composed result.
@@ -51,14 +51,13 @@ def compose_images(image_data, images_folder: str, scale: float = 1000):
     # Determine bounding box for the images in coordinate space
     boxes = []
     for img in image_data:
-        cx = float(img['mittelpunkt']['x'])
-        cy = float(img['mittelpunkt']['y'])
-        width_coord = float(img['x_ausdehnung'])
-        height_coord = float(img['y_ausdehnung'])
-        left = cx - width_coord / 2
-        upper = cy - height_coord / 2
-        right = cx + width_coord / 2
-        lower = cy + height_coord / 2
+        lat = float(img['centre']['lat'])
+        lon = float(img['centre']['lon'])
+        width_coord, height_coord = gps.calculate_frame_dimensions(img['altitude'], lat)
+        left = lon - width_coord / 2
+        upper = lat - height_coord / 2
+        right = lon + width_coord / 2
+        lower = lat + height_coord / 2
         boxes.append((left, upper, right, lower))
     
     min_left = min(box[0] for box in boxes)
@@ -73,12 +72,14 @@ def compose_images(image_data, images_folder: str, scale: float = 1000):
     composite = Image.new("RGBA", (composite_width, composite_height), (255, 255, 255, 0))
     
     for img in image_data:
-        filename = img['dateiname']
-        cx = float(img['mittelpunkt']['x'])
-        cy = float(img['mittelpunkt']['y'])
-        width_pix = int(float(img['x_ausdehnung']) * scale)
-        height_pix = int(float(img['y_ausdehnung']) * scale)
-        
+        filename = img['filename']
+        lat = float(img['centre']['lat'])
+        lon = float(img['centre']['lon'])
+        width_coord, height_coord = gps.calculate_frame_dimensions(img['altitude'], lat)
+        print(f"Image {filename} at center ({lat}, {lon}) with width {width_coord} and height {height_coord}")
+        width_pix = int(width_coord * scale)
+        height_pix = int(height_coord * scale)
+
         image_path = os.path.join(images_folder, filename)
         try:
             im = Image.open(image_path).convert("RGBA")
@@ -86,13 +87,14 @@ def compose_images(image_data, images_folder: str, scale: float = 1000):
             print(f"Fehler beim Laden des Bildes {filename}: {e}")
             continue
 
+        print(f"Processing image: {filename} at center ({lat}, {lon}) with size ({width_pix}, {height_pix})")
         # Resize image to given extents in pixels if needed
         if im.size != (width_pix, height_pix):
             im = im.resize((width_pix, height_pix), Image.Resampling.LANCZOS)
         
         # Calculate top-left position for the image relative to composite (in pixels)
-        left_offset = int((cx - float(img['x_ausdehnung'])/2 - min_left) * scale)
-        upper_offset = int((cy - float(img['y_ausdehnung'])/2 - min_upper) * scale)
+        left_offset = int((lon - width_coord/2 - min_left) * scale)
+        upper_offset = int((lat - height_coord/2 - min_upper) * scale)
         composite.alpha_composite(im, dest=(left_offset, upper_offset))
         
     return composite
