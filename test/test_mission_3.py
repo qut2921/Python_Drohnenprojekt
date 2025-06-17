@@ -38,6 +38,11 @@ async def mission_3():
     await cl.arm_drone(drone, logfile)
     await asyncio.sleep(1)
 
+    # set home location
+    home = await drone.telemetry.home().__anext__()
+    home_latitude = home.latitude_deg
+    home_longitude = home.longitude_deg
+
     try:
         await drone.param.set_param_float("COM_DISARM_LAND", 0.0)
         log.log("🔧 Set COM_DISARM_LAND = 0.0 to prevent auto-disarm", logfile)
@@ -75,14 +80,40 @@ async def mission_3():
 
         if i < len(mission_locations):
             #7. precisionland on target
-            await cl.precision_land_velocity_pid_method(drone, vid, color, condition,logfile)
+            position = await drone.telemetry.position().__anext__()
+            center_lat = position.latitude_deg
+            center_lon = position.longitude_deg
+
+            for i in range(4):
+                x_distance, y_distance = await ip.main_mission_2(drone, vid, color, condition,logfile) # orange target
+
+            if x_distance is None or y_distance is None:
+                log.log("TARGET NOT FOUND", logfile)
+                bool = await cl.fly_spiral_search(drone, center_lat,
+                                                center_lon, vid, color, condition, target_altitude,
+                                                logfile)
+            else:
+                bool = True
+
+
+            if bool == False:
+                #Return to land
+                log.log("No target found, returning to home location.", logfile)
+                await cl.goto_location(drone,
+                                    home_latitude,
+                                    home_longitude,
+                                    target_altitude,
+                                    logfile)
+                await cl.default_land_and_disarm(drone, logfile)
+            else:    
+                await cl.precision_land_velocity_pid_method(drone, vid, color, condition, land_mode,logfile) # oragne target
 
             async for state in drone.telemetry.landed_state():
                 print(f"\r🔍 Landed State: {state}", end="")
                 if state == LandedState.ON_GROUND:
                     log.log("✅ Drone is confirmed landed.", logfile)
-                    log.log("Takeoff again in 2s", logfile)
-                    await asyncio.sleep(2)
+                    log.log("Takeoff again in 5s", logfile)
+                    await asyncio.sleep(5)
                     #8. takeoff to 15 meters
                     await cl.default_takeoff(drone, target_altitude, logfile)
                     break
