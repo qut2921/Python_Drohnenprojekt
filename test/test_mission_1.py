@@ -46,7 +46,8 @@ async def mission_1():
     ]
 
     # 3. Start camera
-    vid = ip.start_videoCapture(1, logfile)
+    weatherConditions = "cloudy"  # or "sunny"
+    vid = ip.start_videoCapture(1, weatherConditions, logfile)
     sequence = 0
 
     # 4. Take off to 5 meters
@@ -86,7 +87,7 @@ async def mission_1():
 
     # 6. Land and disarm (last gps location must be the finsh)
     await cl.default_land_and_disarm(drone, logfile)
-    vid.stop()
+    ip.stop_videoCapture(vid,logfile)  # Stop video capture
     cl.reset_progress()  # Reset progress after mission completion
 
 # Run mission 1

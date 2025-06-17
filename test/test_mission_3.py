@@ -4,6 +4,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 import control.controller_functions as cl 
 import utils.image_processing as image_processing
 import utils.image_processing_raspi as ip
+import utils.colors as colors
 from mavsdk.telemetry import LandedState
 import control.logging as log
 import asyncio
@@ -54,8 +55,11 @@ async def mission_3():
                          (48.76750, 11.33720, 2)]   # yellow target location
 
     # 3. Start camera
-    vid = ip.start_videoCapture(mission_id, logfile)
-    condition = "cloudy"  # condition for color profile only input "cloudy" or "sunny"
+    weatherConditions = "cloudy"  # or "sunny"
+    targetType = "blue"  # blue target
+    color = colors.map_color_to_id(targetType)
+    vid = ip.start_videoCapture(mission_id, weatherConditions, logfile)
+  # condition for color profile only input "cloudy" or "sunny"
 
     # 4. takeoff to 15 meters
     target_altitude = 15.0
@@ -85,12 +89,12 @@ async def mission_3():
             center_lon = position.longitude_deg
 
             for i in range(4):
-                x_distance, y_distance = await ip.main_mission_2(drone, vid, color, condition,logfile) # orange target
+                x_distance, y_distance = await ip.main_mission_2(drone, vid, color, weatherConditions, logfile) # orange target
 
             if x_distance is None or y_distance is None:
                 log.log("TARGET NOT FOUND", logfile)
                 bool = await cl.fly_spiral_search(drone, center_lat,
-                                                center_lon, vid, color, condition, target_altitude,
+                                                center_lon, vid, color, weatherConditions, target_altitude,
                                                 logfile)
             else:
                 bool = True
@@ -106,7 +110,7 @@ async def mission_3():
                                     logfile)
                 await cl.default_land_and_disarm(drone, logfile)
             else:    
-                await cl.precision_land_velocity_pid_method(drone, vid, color, condition, land_mode,logfile) # oragne target
+                await cl.precision_land_velocity_pid_method(drone, vid, color, weatherConditions, land_mode,logfile) # oragne target
 
             async for state in drone.telemetry.landed_state():
                 print(f"\r🔍 Landed State: {state}", end="")
@@ -123,6 +127,7 @@ async def mission_3():
 
     # 6. landing 
     await cl.default_land_and_disarm(drone, logfile)
+    ip.stop_videoCapture(vid, logfile)
     
 
 

@@ -46,7 +46,8 @@ async def mission_1():
     ]
 
     # 3. Start camera
-    vid = ip.start_videoCapture(1, logfile)
+    weatherConditions = "cloudy"  # or "sunny"
+    vid = ip.start_videoCapture(1, weatherConditions, logfile)
     sequence = 0
 
    # await cl.default_takeoff(drone, 0.0, logfile)
