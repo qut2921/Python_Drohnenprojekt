@@ -11,9 +11,9 @@ from mavsdk import system
 landingqPosition = (48.76786, 11.33668)  # Example landing position
 targetType = 4  # Example target type (e.g., orange target)
 
-async def run(landingPosition, targetType, geofence=None):
+async def run(landingPosition, targetType, weatherConditions, geofence=None):
     # Hier könnte der Code für die Ausführung der Mission 2 stehen
-    print(f"Mission 2 gestartet mit Landeposition: {landingPosition}, Zieltyp: {targetType}")
+    print(f"Mission 2 gestartet mit Landeposition: {landingPosition}, Zieltyp: {targetType}, Wetterbedingungen: {weatherConditions}")
     if geofence:
         print(f"Geofence aktiviert mit Punkten: {geofence}")
     else:
