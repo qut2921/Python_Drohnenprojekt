@@ -40,7 +40,7 @@ async def mission_2():
     home_latitude = home.latitude_deg
     home_longitude = home.longitude_deg
     
-    # set location
+    # set target location
     mission_locations = [(48.76786, 11.33668)] # target location
 
     # 3. Start camera
@@ -68,7 +68,9 @@ async def mission_2():
     center_lat = position.latitude_deg
     center_lon = position.longitude_deg
 
-    x_distance, y_distance = await ip.main_mission_2(drone, vid, color, condition,logfile) # orange target
+    for i in range(4):
+        x_distance, y_distance = await ip.main_mission_2(drone, vid, color, condition,logfile) # orange target
+
     if x_distance is None or y_distance is None:
         log.log("TARGET NOT FOUND", logfile)
         bool = await cl.fly_spiral_search(drone, center_lat,
