@@ -2,7 +2,6 @@ import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 import control.controller_functions as cl 
-import utils.image_processing as image_processing
 import utils.image_processing_raspi as ip
 import utils.colors as colors
 from mavsdk.telemetry import LandedState
@@ -25,7 +24,7 @@ async def mission_3():
 
     """
     # Start logging
-    logfile = "mission3.log"
+    logfile = "logs/mission3.log"
     log.log("Mission 3 gestartet", logfile)
     mission_id = 3
     land_mode = "default"  # default or offboard
@@ -51,8 +50,8 @@ async def mission_3():
         log.log(f"⚠️ Could not set COM_DISARM_LAND: {e}", logfile)
 
     # set location 
-    mission_locations = [(48.76758, 11.33717, 0),   # blue target location
-                         (48.76750, 11.33720, 2)]   # yellow target location
+    mission_locations = [(48.76758, 11.33717),   # blue target location
+                         (48.76750, 11.33720)]   # yellow target location
 
     # 3. Start camera
     weatherConditions = "cloudy"  # or "sunny"
@@ -69,7 +68,7 @@ async def mission_3():
     # 5. fly to location
     start_index = cl.load_progress()
     # lat und long muss bei Hanna umgedreht werden (longitude, latitude)
-    for i, (latitude, longitude, color) in enumerate(mission_locations, start=1):
+    for i, (latitude, longitude) in enumerate(mission_locations, start=1):
         # Skip already visited locations
         if i <= start_index:
             log.log(f"⏭️ Skipping location {i} (already completed)", logfile)
@@ -101,14 +100,8 @@ async def mission_3():
 
 
             if bool == False:
-                #Return to land
-                log.log("No target found, returning to home location.", logfile)
-                await cl.goto_location(drone,
-                                    home_latitude,
-                                    home_longitude,
-                                    target_altitude,
-                                    logfile)
-                await cl.default_land_and_disarm(drone, logfile)
+                # Fly to next location
+                continue
             else:    
                 await cl.precision_land_velocity_pid_method(drone, vid, color, weatherConditions, land_mode,logfile) # oragne target
 
@@ -129,5 +122,4 @@ async def mission_3():
     await cl.default_land_and_disarm(drone, logfile)
     ip.stop_videoCapture(vid, logfile)
     
-
-
+asyncio.run(mission_3())

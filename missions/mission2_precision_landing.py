@@ -3,21 +3,24 @@ import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 import control.controller_functions as cl 
 import utils.image_processing_raspi as ip
+import utils.colors as colors
 import control.logging as log
 import asyncio
 import math
 from mavsdk import system
 
-landingqPosition = (48.76786, 11.33668)  # Example landing position
-targetType = 4  # Example target type (e.g., orange target)
-
 async def run(landingPosition, targetType, weatherConditions, geofence=None):
+    # Start logging
+    logfile = "logs/mission2.log"
+    log.log("---------------------------------", logfile)
+    log.log("Mission 2 gestartet", logfile)
+
     # Hier könnte der Code für die Ausführung der Mission 2 stehen
-    print(f"Mission 2 gestartet mit Landeposition: {landingPosition}, Zieltyp: {targetType}, Wetterbedingungen: {weatherConditions}")
+    log.log(f"Mission 2 gestartet mit Landeposition: {landingPosition}, Zieltyp: {targetType}, Wetterbedingungen: {weatherConditions}", logfile)
     if geofence:
         print(f"Geofence aktiviert mit Punkten: {geofence}")
     else:
-        print("Kein Geofence aktiviert")
+        print("Geofence über QGC gesetzt")
     pass
 
     """
@@ -33,10 +36,9 @@ async def run(landingPosition, targetType, weatherConditions, geofence=None):
     8a. precision land
 
     """
-    # Start logging
-    logfile = "mission2.log"
-    log.log("Mission 2 gestartet", logfile)
+    # Set Parms
     mission_id = 2
+    land_mode = "default"  # default or offboard
 
     # 1. connect to the drone
     drone = await cl.connect_drone(logfile)
@@ -50,13 +52,12 @@ async def run(landingPosition, targetType, weatherConditions, geofence=None):
     home_latitude = home.latitude_deg
     home_longitude = home.longitude_deg
     
-    # set location
-    latitude, longitude = landingPosition  # target location
-    mission_locations = [(latitude, longitude)] # target location
+    # set target location
+    mission_locations = landingPosition # target location
 
     # 3. Start camera
-    vid = ip.start_videoCapture(2)
-    color = targetType  # orange target
+    color = colors.map_color_to_id(targetType) # convert target type to color ID
+    vid = ip.start_videoCapture(mission_id, weatherConditions, logfile)
 
     # 4. takeoff to 5 meters
     target_altitude = 5.0
@@ -78,11 +79,13 @@ async def run(landingPosition, targetType, weatherConditions, geofence=None):
     center_lat = position.latitude_deg
     center_lon = position.longitude_deg
 
-    n_ned, e_ned = await ip.main_mission_2(drone, vid, color) # orange target
-    if n_ned is None or e_ned is None:
+    for i in range(4):
+        x_distance, y_distance = await ip.main_mission_2(drone, vid, color, weatherConditions, logfile) # orange target
+
+    if x_distance is None or y_distance is None:
         log.log("TARGET NOT FOUND", logfile)
         bool = await cl.fly_spiral_search(drone, center_lat,
-                                          center_lon, vid, color, target_altitude,
+                                          center_lon, vid, color, weatherConditions, target_altitude,
                                           logfile)
     else:
         bool = True
@@ -97,9 +100,8 @@ async def run(landingPosition, targetType, weatherConditions, geofence=None):
                                target_altitude,
                                logfile)
         await cl.default_land_and_disarm(drone, logfile)
+        ip.stop_videoCapture(vid, logfile)
     else:    
         #8. precision land
-        await cl.precision_land_velocity_pid_method(drone, vid, color, mission_id, logfile) # oragne target
-
-
-asyncio.run(mission_2())
+        await cl.precision_land_velocity_pid_method(drone, vid, color, weatherConditions, land_mode, logfile) # oragne target
+        ip.stop_videoCapture(vid, logfile)

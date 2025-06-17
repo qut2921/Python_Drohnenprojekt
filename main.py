@@ -65,7 +65,7 @@ elif args.mission == 3:
     if not(args.landingPosition and args.waypoints and args.targetNumber is not None and args.targetType):
         parser.error("Mission 3 erfordert landingPosition, waypoints, targetType und targetNumber")
 
-    mission3_multi_target_landing.run(landingPosition=args.landingPosition, waypoints=args.waypoints, targetNumber=args.targetNumber, weatherConditions=args.weatherConditions, geofence=args.geofence)
+    mission3_multi_target_landing.run(landingPosition=args.landingPosition, waypoints=args.waypoints, targetNumber=args.targetNumber, targetType=args.targetType, weatherConditions=args.weatherConditions, geofence=args.geofence)
 
 
 
