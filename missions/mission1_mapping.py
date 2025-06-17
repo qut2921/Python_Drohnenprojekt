@@ -10,9 +10,9 @@ import asyncio
 import os
 
 
-async def run(landingPosition, targetType, area, geofence=None):
+async def run(landingPosition, targetType, waypoints, geofence=None):
     # Hier könnte der Code für die Ausführung der Mission 1 stehen
-    print(f"Mission 1 gestartet mit Landeposition: {landingPosition}, Zieltyp: {targetType}, Suchgebiet: {area}")
+    print(f"Mission 1 gestartet mit Landeposition: {landingPosition}, Zieltyp: {targetType}, Wegpunkte: {waypoints}")
     if geofence:
         print(f"Geofence aktiviert mit Punkten: {geofence}")
     else:
