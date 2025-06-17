@@ -40,16 +40,16 @@ args = parser.parse_args()
 
 if args.mission == 1:
     print("Mission 1")
-    # required: landingPosition, targetType and (area XOR waypoints)
-    if not (args.landingPosition and args.targetType and ((args.area and not args.waypoints) or (args.waypoints and not args.area))):
-        parser.error("Mission 1 erfordert landingPosition, targetType und entweder area oder waypoints (exklusiv)")
-    print(f"Landeposition: {args.landingPosition}, Zieltyp: {args.targetType}")
+    # required: landingPosition and (area XOR waypoints)
+    if not (args.landingPosition and ((args.area and not args.waypoints) or (args.waypoints and not args.area))):
+        parser.error("Mission 1 erfordert landingPosition und entweder area oder waypoints (exklusiv)")
+    print(f"Landeposition: {args.landingPosition}")
     if args.area:
         print(f"Suchgebiet: {args.area}")
     if args.waypoints:
         print(f"Wegpunkte: {args.waypoints}")
 
-    mission1_mapping.run(landingPosition=args.landingPosition, targetType=args.targetType, waypoints=args.waypoints, weatherConditions=args.weatherConditions, geofence=args.geofence)
+    mission1_mapping.run(landingPosition=args.landingPosition, waypoints=args.waypoints, weatherConditions=args.weatherConditions, geofence=args.geofence)
 
 elif args.mission == 2:
     print("Mission 2")
@@ -61,9 +61,9 @@ elif args.mission == 2:
 
 elif args.mission == 3:
     print("Mission 3")
-    # required: landingPosition, waypoints and targetNumber
-    if not(args.landingPosition and args.waypoints and args.targetNumber is not None):
-        parser.error("Mission 3 erfordert landingPosition, waypoints und targetNumber")
+    # required: landingPosition, waypoints, targetType and targetNumber
+    if not(args.landingPosition and args.waypoints and args.targetNumber is not None and args.targetType):
+        parser.error("Mission 3 erfordert landingPosition, waypoints, targetType und targetNumber")
 
     mission3_multi_target_landing.run(landingPosition=args.landingPosition, waypoints=args.waypoints, targetNumber=args.targetNumber, weatherConditions=args.weatherConditions, geofence=args.geofence)
 
