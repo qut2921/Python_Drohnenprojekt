@@ -93,7 +93,7 @@ def locate_object_and_save(
                     heading,
                     lat_position,
                     long_position,
-                    frame)
+                    frame,)
 
                 frame, shape = sd.detect_shape(frame, hsv, x, y, w, h, colorProfile, condition)
 
@@ -107,7 +107,9 @@ def locate_object_and_save(
                     h,
                     lat_object,
                     long_object,
-                    shape)
+                    shape,
+                    area
+                )
 
                 with open(f"{output_dir}/image_processed.csv", "a") as processed_log_file:
                     processed_log_file.write(
@@ -145,7 +147,7 @@ def change_output_and_create_folder(color_profile):
 
 def draw_rectangle_with_text(
         frame, name, x, y, w, h,
-        latitude, longitude, shape):
+        latitude, longitude, shape, area):
     """
     Draw a rectangle around the detected object and add text with its coordinates.
     If the text goes out of bounds, adjust its position and color.
@@ -158,7 +160,7 @@ def draw_rectangle_with_text(
     text_colour = (0, 0, 255)  # Red
 
     # Write text and get width and size
-    text = f"{name}, {shape}, ({latitude:.6f} lat, {longitude:.6f} long)"
+    text = f"{name}, {shape}, ({latitude:.6f} lat, {longitude:.6f} long, area: {area})"
     (text_width, text_height), _ = cv2.getTextSize(text, font, scale, thickness)
 
     # Set default text position

@@ -2,14 +2,16 @@ import cv2
 import numpy as np
 
 
-image_file = "BildsequenzTest_0/Calibration/frame_0_14.jpg"
+#image_file = "BildsequenzTest_0/Calibration/sunny_cloudy_combined.png"
+image_file = "BildsequenzTest_0/Calibration/combined.png"
+#image_file = "BildsequenzTest_0/Calibration/frame_0_11.jpg"
 color = "blue"  # Change to "blue" or "green" as needed
 
 def nothing(x):
     pass
 
 image = cv2.imread(image_file)
-image = cv2.resize(image, (1920, 1080))
+#image = cv2.resize(image, (1920, 1080))
 hsv = cv2.cvtColor(image, cv2.COLOR_RGB2HSV)
 
 cv2.namedWindow("Frame", cv2.WINDOW_NORMAL)  # Make it resizable
