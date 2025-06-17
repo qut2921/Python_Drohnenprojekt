@@ -1,7 +1,5 @@
 import asyncio
 from datetime import datetime
-from mavsdk import System
-import modules.controller_functions as cl
 
 
 def log(message, logfile="default.log"):
