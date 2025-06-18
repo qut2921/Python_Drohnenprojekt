@@ -47,6 +47,7 @@ async def run(landingPosition, waypoints, weatherConditions, geofence=None):
     home = await drone.telemetry.home().__anext__()
     home_lat = home.latitude_deg
     home_long = home.longitude_deg
+    landingPosition = (home_lat,home_long)
     mission_locations = waypoints.append(landingPosition)  # Add landing position to the end of the waypoints
 
     # 3. Start camera
