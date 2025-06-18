@@ -23,7 +23,7 @@ def choose_folder(colorProfile):
 
 def filter_near_duplicates(color):
 # Load CSV with no headers
-    df = pd.read_csv("Found_object"+ color +"/image_processed.csv", header=None)
+    df = pd.read_csv("Mission1/Found_object"+ color +"/image_processed.csv", header=None)
 
     # Set descriptive column names
     df.columns = ["sequence", "image", "n_ned", "e_ned", "latitude", "longitude","shape"]
@@ -45,6 +45,6 @@ def filter_near_duplicates(color):
 
     # Filter and save result
     filtered_df = df[keep_mask].reset_index(drop=True)
-    filtered_df.to_csv("Found_object"+ color+"/filtered_output.csv", index=False, header=None)
+    filtered_df.to_csv("Mission1/Found_object"+ color+"/filtered_output.csv", index=False, header=None)
 
     print(f"Filtered CSV saved. {len(df)} → {len(filtered_df)} rows.")
