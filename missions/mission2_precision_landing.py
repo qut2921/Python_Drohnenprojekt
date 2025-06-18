@@ -11,7 +11,7 @@ from mavsdk import system
 
 async def run(landingPosition, targetType, weatherConditions, geofence=None):
     # Start logging
-    logfile = "logs/mission2.log"
+    logfile = "mission2.log"
     log.log("---------------------------------", logfile)
     log.log("Mission 2 gestartet", logfile)
 
@@ -65,7 +65,7 @@ async def run(landingPosition, targetType, weatherConditions, geofence=None):
     await asyncio.sleep(1)
 
     # 5. fly to location and climb to 15 meters
-    target_altitude = 10.0
+    target_altitude = 15.0
     latitude, longitude = mission_locations[0]
     log.log(
             f"🟣 Flying to single location: "
