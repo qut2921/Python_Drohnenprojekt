@@ -3,8 +3,6 @@ import json
 import logging
 import os
 import numpy as np
-from mavsdk import System
-from mavsdk.offboard import PositionNedYaw, OffboardError
 from shapely import geometry as geom
 
 logging.basicConfig(level=logging.INFO)
@@ -79,33 +77,6 @@ def geodetic_to_ned(lat, lon, alt, ref_lat, ref_lon, ref_alt=0):
     down = ref_alt - alt
     return north, east, down
 
-# --- Drohne steuern ---------------------------------------------------
-
-async def fly_path(drone, path_coords, reference_point):
-    logging.info("-- Arming")
-    await drone.action.arm()
-
-    await drone.offboard.set_position_ned(PositionNedYaw(0.0, 0.0, -2.0, 0.0))
-    try:
-        await drone.offboard.start()
-    except OffboardError as e:
-        logging.info(f"Offboard start failed: {e}")
-        await drone.action.disarm()
-        return
-
-    logging.info("-- Starting mission")
-    for lon, lat in path_coords:
-        north, east, down = geodetic_to_ned(lat, lon, 0, reference_point[1], reference_point[0])
-        
-        logging.info(f"Flying to GPS: lat={lat:.7f}, lon={lon:.7f}")
-    # Vorhandene NED-Ausgabe (wie gehabt)
-        logging.info(f"Flying to NED: N={north:.1f}, E={east:.1f}, D={down:.1f}")
-
-        await drone.offboard.set_position_ned(PositionNedYaw(north, east, -5.0, 0.0))
-        await asyncio.sleep(5)
-    logging.info("-- Landing")
-    await drone.action.land()
-
 # --- Hauptprogramm ----------------------------------------------------
 
 async def main(input_mode, path=None, excel_path=None):
@@ -128,40 +99,6 @@ async def main(input_mode, path=None, excel_path=None):
     logging.info("Generierte Raster-Wegpunkte (lat, lon):")
     for lon, lat in path_coords:
         logging.info(f"{lat:.7f}, {lon:.7f}")
-
-    start_point = path_coords[0]
-
-    drone = System()
-    logging.info("Connecting to drone on udp://:14540 ...")
-    await drone.connect(system_address="udp://:14540")
-
-    logging.info("Warte auf Verbindung...")
-    try:
-        async def wait_for_connection(drone):
-            async for state in drone.core.connection_state():
-                if state.is_connected:
-                    logging.info("-- Verbunden!")
-                    return
-
-        await asyncio.wait_for(wait_for_connection(drone), timeout=20)
-    except asyncio.TimeoutError:
-        logging.info("Fehler: Verbindung zur Drohne konnte nicht hergestellt werden.")
-        return
-
-    logging.info("Warte auf GPS-Fix...")
-    try:
-        async def wait_for_gps(drone):
-            async for health in drone.telemetry.health():
-                if health.is_global_position_ok:
-                    logging.info("-- GPS OK")
-                    return
-
-        await asyncio.wait_for(wait_for_gps(drone), timeout=20)
-    except asyncio.TimeoutError:
-        logging.info("Fehler: GPS-Fix konnte nicht erreicht werden.")
-        return
-
-    await fly_path(drone, path_coords, start_point)
 
 # --- Startkonfiguration -----------------------------------------------
 
