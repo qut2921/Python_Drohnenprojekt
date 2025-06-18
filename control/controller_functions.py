@@ -55,8 +55,13 @@ async def arm_drone(drone, logfile):
     """
     log.log("🔄 Arming...", logfile)
     try:
-        await drone.action.arm()
-        log.log("✅ Drone armed\n", logfile)
+        #async for is_armable in drone.telemetry.health():
+          #  print({is_armable})
+            
+         #   if is_armable:
+                await drone.action.arm()
+                log.log("✅ Drone armed\n", logfile)
+           #     break
     except Exception as e:
         message = f"❌ Error arming drone: {e}"
         log.log(message, logfile)
@@ -195,7 +200,7 @@ async def goto_location(drone: System, target_latitude: float,
         # Checks if the drone reached target
         if (abs(current_latitude - target_latitude) < 0.000005 and
                 abs(current_longitude - target_longitude) < 0.00005 and
-                abs(current_height - target_altitude) < 0.1):
+                abs(current_height - target_altitude) < 1):
             log.log("\n✅ Target location reached\n", logfile)
             break
 
@@ -256,9 +261,9 @@ async def precision_land_velocity_pid_method(drone, vid, color, condition, mode,
     max_speed = 0.5  # m/s – max speed
     descent_speed = 0.5  # m/s
     landing_threshold = 2  # m
-    alignment_threshold = 0.1  # m threshold for alignment
-    alignment_stable_time = 2.0  # seconds to consider alignment stable
-    dt = 0.1  # time step in seconds
+    alignment_threshold = 1  # m threshold for alignment
+    alignment_stable_time = 0.0  # seconds to consider alignment stable
+    dt = 0.25  # time step in seconds
     reset_counter = 0  # Counter for reset attempts
 
     # Initialize PID states
@@ -381,7 +386,7 @@ async def precision_land_test(drone, mission_id, n_ned, e_ned, logfile):
     max_speed = 1.0  # m/s – max speed
     descent_speed = 0.5  # m/s
     landing_threshold = 2  # m
-    alignment_threshold = 0.1  # m threshold for alignment
+    alignment_threshold = 0.8  # m threshold for alignment
     alignment_stable_time = 2.0  # seconds to consider alignment stable
     dt = 0.1  # time step in seconds
 

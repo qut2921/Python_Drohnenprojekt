@@ -279,6 +279,8 @@ async def main_mission_2(drone, vid, colorProfile, condition, logfile):
 
     # Telemetry data that will come from the flight controller
     latitude, longitude, altitude, roll, pitch, yaw, _, key = await cm.get_parameters_for_image_processing(drone)
+    print({altitude})
+
 
     if key == 1:
         print("COMMUNICATION LOST!")

@@ -23,6 +23,11 @@ async def run(landingPosition, waypoints, weatherConditions, geofence=None):
         7. Wait for 45 seconds at each location
         8. Land and disarm at home location
     """
+    # Start logging
+    logfile = "mission1.log"
+    log.log("---------------------------------", logfile)
+    log.log("Mission 1 gestartet", logfile)
+    
     # Hier könnte der Code für die Ausführung der Mission 1 stehen
     log.log(f"Mission 1 gestartet mit Landeposition: {landingPosition}, Wegpunkte: {waypoints}, Wetterbedingungen: {weatherConditions}",logfile)
     if geofence:
@@ -31,10 +36,6 @@ async def run(landingPosition, waypoints, weatherConditions, geofence=None):
         log.log("Geofence über QGC gesetzt",logfile)
     pass
 
-    # Start logging
-    logfile = "logs/mission1.log"
-    log.log("---------------------------------", logfile)
-    log.log("Mission 1 gestartet", logfile)
 
     # 1. Connect to the drone
     drone = await cl.connect_drone(logfile)

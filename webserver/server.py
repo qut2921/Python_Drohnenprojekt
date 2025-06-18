@@ -16,7 +16,7 @@ def index():
         target_number = request.form.get("targetNumber", "")   # Neuer Parameter
         waypoints = request.form.get("waypoints", "")
 
-        command = ["python3", "main.py", "--mission", mission, "--landingPosition", landing_position]
+        command = ["python3", "Desktop/Python_Drohnenprojekt/main.py", "--mission", mission, "--landingPosition", landing_position]
         
         if target_number:
             command += ["--targetNumber", target_number]

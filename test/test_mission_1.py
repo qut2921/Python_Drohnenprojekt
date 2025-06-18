@@ -24,7 +24,7 @@ async def mission_1():
         8. Land and disarm at home location
     """
     # Start logging
-    logfile = "logs/mission1.log"
+    logfile = "mission1.log"
     log.log("Mission 1 gestartet", logfile)
 
     # 1. Connect to the drone
@@ -32,6 +32,7 @@ async def mission_1():
 
     # 2. Arm and Mission locations
     # Arm the drone
+
     await cl.arm_drone(drone, logfile)
 
     # Set mission locations
@@ -39,14 +40,21 @@ async def mission_1():
     home_lat = home.latitude_deg
     home_long = home.longitude_deg
     mission_locations = [
-        {48.76756, 11.33704},
-        {48.76775, 11.33683},
-        {48.76781, 11.33669},
-        {home_lat, home_long}
+            {48.767663,11.337072},
+            {48.767735,11.336915},
+            {48.767803,11.336773},
+            {48.767861,11.336656},
+            {48.767927,11.336522},
+            {48.76798,11.336404},
+            {48.768029,11.336299},
+            {48.768097,11.336176},
+            {48.767836,11.336457},
+            {48.76773,11.336694},
+            {home_lat, home_long}
     ]
 
     # 3. Start camera
-    weatherConditions = "cloudy"  # or "sunny"
+    weatherConditions = "sunny"  # or "sunny"
     vid = ip.start_videoCapture(1, weatherConditions, logfile)
     sequence = 0
 

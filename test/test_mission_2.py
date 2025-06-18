@@ -24,7 +24,7 @@ async def mission_2():
 
     """
     # Start logging
-    logfile = "logs/mission2.log"
+    logfile = "mission2.log"
     log.log("Mission 2 gestartet", logfile)
     mission_id = 2
     land_mode = "default"  # default or offboard
@@ -42,10 +42,10 @@ async def mission_2():
     home_longitude = home.longitude_deg
     
     # set target location
-    mission_locations = [(48.76786, 11.33668)] # target location
+    mission_locations = [(48.767712, 11.336947)] # target location
 
     # 3. Start camera
-    weatherConditions = "cloudy"  # or "sunny"
+    weatherConditions = "sunny"  # or "sunny"
     targetType = "orange"  # orange target
     color = colors.map_color_to_id(targetType) # convert target type to color ID
     vid = ip.start_videoCapture(mission_id, weatherConditions, logfile)

@@ -50,7 +50,7 @@ if args.mission == 1:
     if args.waypoints:
         print(f"Wegpunkte: {args.waypoints}")
 
-    asyncio.create_task(mission1_mapping.run(landingPosition=args.landingPosition, waypoints=args.waypoints, weatherConditions=args.weatherConditions, geofence=args.geofence))
+    asyncio.run(mission1_mapping.run(landingPosition=args.landingPosition, waypoints=args.waypoints, weatherConditions=args.weatherConditions, geofence=args.geofence))
 
 elif args.mission == 2:
     print("Mission 2")
@@ -58,7 +58,7 @@ elif args.mission == 2:
     if not(args.landingPosition and args.targetType):
         parser.error("Mission 2 erfordert landingPosition und targetType")
 
-    asyncio.create_task(mission2_precision_landing.run(landingPosition=args.landingPosition, targetType=args.targetType, weatherConditions=args.weatherConditions, geofence=args.geofence))
+    mission2_precision_landing.run(landingPosition=args.landingPosition, targetType=args.targetType, weatherConditions=args.weatherConditions, geofence=args.geofence)
 
 elif args.mission == 3:
     print("Mission 3")
