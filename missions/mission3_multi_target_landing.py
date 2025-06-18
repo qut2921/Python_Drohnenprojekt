@@ -23,7 +23,7 @@ async def run(landingPosition, waypoints, targetNumber, targetType, weatherCondi
     13. landing (at final location)
     """
     # Start logging
-    logfile = "logs/mission3.log"
+    logfile = "mission3.log"
     log.log("---------------------------------", logfile)
     log.log("Mission 3 gestartet", logfile)
 

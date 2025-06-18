@@ -75,8 +75,8 @@ def set_colorProfiles(n, condition):
 
         if n == 2:
             name = "Yellow"
-            hsv_lower = (62, 31, 69)
-            hsv_upper = (84, 160, 255)
+            hsv_lower = (61, 88, 69)
+            hsv_upper = (94, 160, 255)
             return (name, hsv_lower, hsv_upper)
 
         if n == 3:

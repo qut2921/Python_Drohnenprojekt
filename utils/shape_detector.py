@@ -44,7 +44,7 @@ def detect_shape(frame, hsv,x, y, w, h, color, condition):
 
                 
 
-        if cv2.contourArea(biggest) >= 300:
+        if cv2.contourArea(biggest) >= 50:
             epsilon = 0.03*cv2.arcLength(biggest, True)
             approx = cv2.approxPolyDP(biggest, epsilon, True)
 
