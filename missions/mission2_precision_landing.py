@@ -18,9 +18,9 @@ async def run(landingPosition, targetType, weatherConditions, geofence=None):
     # Hier könnte der Code für die Ausführung der Mission 2 stehen
     log.log(f"Mission 2 gestartet mit Landeposition: {landingPosition}, Zieltyp: {targetType}, Wetterbedingungen: {weatherConditions}", logfile)
     if geofence:
-        print(f"Geofence aktiviert mit Punkten: {geofence}")
+        log.log(f"Geofence aktiviert mit Punkten: {geofence}",logfile)
     else:
-        print("Geofence über QGC gesetzt")
+        log.log("Geofence über QGC gesetzt",logfile)
     pass
 
     """
@@ -65,7 +65,7 @@ async def run(landingPosition, targetType, weatherConditions, geofence=None):
     await asyncio.sleep(1)
 
     # 5. fly to location and climb to 15 meters
-    target_altitude = 15.0
+    target_altitude = 10.0
     latitude, longitude = mission_locations[0]
     log.log(
             f"🟣 Flying to single location: "

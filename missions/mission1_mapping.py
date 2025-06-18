@@ -24,11 +24,11 @@ async def run(landingPosition, waypoints, weatherConditions, geofence=None):
         8. Land and disarm at home location
     """
     # Hier könnte der Code für die Ausführung der Mission 1 stehen
-    print(f"Mission 1 gestartet mit Landeposition: {landingPosition}, Wegpunkte: {waypoints}, Wetterbedingungen: {weatherConditions}")
+    log.log(f"Mission 1 gestartet mit Landeposition: {landingPosition}, Wegpunkte: {waypoints}, Wetterbedingungen: {weatherConditions}",logfile)
     if geofence:
-        print(f"Geofence aktiviert mit Punkten: {geofence}")
+        log.log(f"Geofence aktiviert mit Punkten: {geofence}",logfile)
     else:
-        print("Geofence über QGC gesetzt")
+        log.log("Geofence über QGC gesetzt",logfile)
     pass
 
     # Start logging
