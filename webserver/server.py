@@ -1,6 +1,7 @@
 # webserver/server.py
 from flask import Flask, request, render_template
 import subprocess
+from flask import abort
 
 app = Flask(__name__)
 
@@ -42,28 +43,14 @@ def index():
 
     return render_template("index.html", output=output)
 
-@app.route("/logs/mission1")
-def get_logs1():
+@app.route("/logs/<mission>")
+def get_logs(mission):
+    allowed_missions = {"mission1", "mission2", "mission3"}
+    if mission not in allowed_missions:
+        abort(404)
+    log_path = f"logs/{mission}.log"
     try:
-        with open("logs/mission1.log", "r") as f:
-            log_content = f.read()
-    except Exception as e:
-        log_content = f"Fehler beim Lesen der Log-Datei: {str(e)}"
-    return log_content
-
-@app.route("/logs/mission2")
-def get_logs2():
-    try:
-        with open("logs/mission2.log", "r") as f:
-            log_content = f.read()
-    except Exception as e:
-        log_content = f"Fehler beim Lesen der Log-Datei: {str(e)}"
-    return log_content
-
-@app.route("/logs/mission3")
-def get_logs3():
-    try:
-        with open("logs/mission3.log", "r") as f:
+        with open(log_path, "r") as f:
             log_content = f.read()
     except Exception as e:
         log_content = f"Fehler beim Lesen der Log-Datei: {str(e)}"
