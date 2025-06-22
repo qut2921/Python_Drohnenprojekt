@@ -47,7 +47,7 @@ def locate_object_and_save(
         output_dir, image_filename,
         colorProfile, condition, hsv,
         frame, min_area, detectedObject,
-        pitch, roll, altitude, heading, lat_position, long_position):
+        pitch, roll, altitude, heading, lat_position, long_position, object_id):
     """
     Locate the object in the frame based on the specified color profile.
     This function is used for post-processing of the images that have been shot
@@ -66,6 +66,8 @@ def locate_object_and_save(
         name, hsv_lower, hsv_upper = colors.set_colorProfiles(colorProfile, condition)
         mask = cv2.inRange(hsv, hsv_lower, hsv_upper)
 
+    print(f"Processing {name}...")
+
     # remove noise from mask
     # mask = remove_noise(mask)
 
@@ -79,6 +81,7 @@ def locate_object_and_save(
 
             # Check if area is larger than minimum area
             if area >= min_area:
+                object_id += 1
                 x, y, w, h = cv2.boundingRect(cnt)
 
                 # calculate GPS coordinates
@@ -108,12 +111,13 @@ def locate_object_and_save(
                     lat_object,
                     long_object,
                     shape,
-                    area
+                    area,
+                    object_id
                 )
 
                 with open(f"{output_dir}/image_processed.csv", "a") as processed_log_file:
                     processed_log_file.write(
-                        f"{output_dir}, {image_filename}, {n_ned}, {e_ned}, {lat_object}, {long_object}, {shape}\n")
+                        f"{output_dir}, {image_filename}, {object_id}, {name}, {shape}, {lat_object:.6f}, {long_object:.6f}\n")
 
                 if detectedObject == False:
                     detectedObject = True
@@ -125,19 +129,14 @@ def locate_object_and_save(
         # Reset flag if no contours are found
         detectedObject = False
 
-    return frame
+    return frame, object_id
 
 
-def change_output_and_create_folder(color_profile):
+def change_output_and_create_folder():
     """Create a directory for saving processed images.
     """
 
-    if color_profile == 1:
-        output_dir = f"Mission1/Found_Object/red"
-    elif color_profile == 2:
-        output_dir = f"Mission1/Found_Object/yellow"
-    elif color_profile == 0:
-        output_dir = f"Mission1/Found_Object/blue"
+    output_dir = f"Mission1/Found_Object"
 
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
@@ -147,7 +146,7 @@ def change_output_and_create_folder(color_profile):
 
 def draw_rectangle_with_text(
         frame, name, x, y, w, h,
-        latitude, longitude, shape, area):
+        latitude, longitude, shape, area, object_id):
     """
     Draw a rectangle around the detected object and add text with its coordinates.
     If the text goes out of bounds, adjust its position and color.
@@ -155,12 +154,12 @@ def draw_rectangle_with_text(
 
     # Set text properties
     font = cv2.FONT_HERSHEY_SIMPLEX
-    scale = 0.6
-    thickness = 1
+    scale = 0.8
+    thickness = 2
     text_colour = (0, 0, 255)  # Red
 
     # Write text and get width and size
-    text = f"{name}, {shape}, ({latitude:.6f} lat, {longitude:.6f} long, area: {area})"
+    text = f"{name}, ({latitude:.6f} lat, {longitude:.6f} long, area: {area}, id: {object_id})"
     (text_width, text_height), _ = cv2.getTextSize(text, font, scale, thickness)
 
     # Set default text position
@@ -170,11 +169,11 @@ def draw_rectangle_with_text(
     # Adjust text position if it goes out of bounds
     if text_x + text_width > frame.shape[1]:
         text_x = frame.shape[1] - text_width - 10
-        text_colour = (255, 0, 0)  # blue
+        text_colour = (0, 0, 255)  # red
 
     if text_y - text_height < 0:
         text_y = y + h + text_height + 5
-        text_colour = (255, 0, 0)  # blue
+        text_colour = (0, 0, 255)  # red
 
     # Draw rectangle and text
     cv2.rectangle(frame, (x, y), (x+w, y+h), (0, 255, 255), 2)
@@ -199,15 +198,17 @@ def remove_noise(mask):
     return mask
 
 
-def main_mission_1_post_processing(sequence, colorProfile, condition, min_area):
+def main_mission_1_post_processing(sequence, condition, min_area):
     """
     After acquiring the images, this function processes and locates
     the object by reading the CSV files. In case an object is located, a 
     second CSV files with the GPS object coordinates is created.
     """
 
+
+    object_id = 0
     # Read the CSV file with telemetry data
-    for i in range(sequence):
+    for i in range(sequence+1):
         with open(f"Mission1/Bildsequenz_{i}/image_saved.csv", "r") as log_file:
             lines = log_file.readlines()
         print(f"Processing sequence {i}...")
@@ -229,24 +230,29 @@ def main_mission_1_post_processing(sequence, colorProfile, condition, min_area):
             detectedObject = False
 
             # Save every color in a separate directory
-            output_dir = change_output_and_create_folder(colorProfile)
+            output_dir = change_output_and_create_folder()
 
             # Locate the object and save locations in CSV file
-            frame = locate_object_and_save(
-                output_dir,
-                image_filename,
-                colorProfile,
-                condition,
-                hsv,
-                frame,
-                min_area,
-                detectedObject,
-                pitch,
-                roll,
-                altitude,
-                heading,
-                lat_position,
-                long_position
+            for i in range(4):
+                if i == 3:
+                    continue
+                colorProfile = i
+                frame, object_id = locate_object_and_save(
+                    output_dir,
+                    image_filename,
+                    colorProfile,
+                    condition,
+                    hsv,
+                    frame,
+                    min_area,
+                    detectedObject,
+                    pitch,
+                    roll,
+                    altitude,
+                    heading,
+                    lat_position,
+                    long_position,
+                    object_id
             )
 
             # Save the processed image

@@ -2,9 +2,9 @@ import cv2
 import numpy as np
 
 
-image_file = "BildsequenzTest_0/Calibration/frame_100_0.png"
+#image_file = "BildsequenzTest_0/Calibration/feldweg_2.png"
 #image_file = "BildsequenzTest_0/Calibration/combined.png"
-#image_file = "BildsequenzTest_0/Calibration/frame_7_0.jpg"
+image_file = "BildsequenzTest_0/Calibration/frame_0_309.jpg"
 color = "blue"  # Change to "blue" or "green" as needed
 
 def nothing(x):

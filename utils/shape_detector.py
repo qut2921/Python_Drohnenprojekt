@@ -32,7 +32,7 @@ def detect_shape(frame, hsv,x, y, w, h, color, condition):
     if color == 0:
         _, lower_black, upper_black = colors.set_colorProfiles(5, condition)
         black_mask = cv2.inRange(roi_hsv, lower_black, upper_black)
-        black_mask = processor.remove_noise(black_mask)
+        #black_mask = processor.remove_noise(black_mask)
     else:
         _, lower_black, upper_black = colors.set_colorProfiles(6, condition)
         black_mask = cv2.inRange(roi_hsv, lower_black, upper_black)
@@ -44,11 +44,11 @@ def detect_shape(frame, hsv,x, y, w, h, color, condition):
 
                 
 
-        if cv2.contourArea(biggest) >= 50:
-            epsilon = 0.03*cv2.arcLength(biggest, True)
+        if cv2.contourArea(biggest) >= 20:
+            epsilon = 0.05*cv2.arcLength(biggest, True)
             approx = cv2.approxPolyDP(biggest, epsilon, True)
 
-            cv2.drawContours(roi, [biggest], 0, (0, 255, 0), 2)
+            #cv2.drawContours(roi, [biggest], 0, (0, 255, 0), 2)
 
             x_black, y_black, w_black, h_black = cv2.boundingRect(approx)                        
             x_black_mid = int(x_black + w_black / 3)+x
@@ -60,15 +60,15 @@ def detect_shape(frame, hsv,x, y, w, h, color, condition):
 
             if len(approx) == 3:
                 shape = "Triangle"
-                cv2.putText(frame, "Triangle", coords, font, 0.5, colour_text, 1)
+                #cv2.putText(frame, "Triangle", coords, font, 0.5, colour_text, 1)
                 print("Dreieck erkannt")
             elif len(approx) == 4:
                 shape = "Rectangle"
-                cv2.putText(frame, "Rectangle", coords, font, 0.5, colour_text, 1)
+                #cv2.putText(frame, "Rectangle", coords, font, 0.5, colour_text, 1)
                 print("Rechteck erkannt")
             else:
                 shape = "Circle"
-                cv2.putText(frame, "Circle", coords, font, 0.5, colour_text, 1)
+                #cv2.putText(frame, "Circle", coords, font, 0.5, colour_text, 1)
                 print("Kreis erkannt")
 
             frame[y:y+h, x:x+w] = roi

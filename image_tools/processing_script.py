@@ -9,10 +9,7 @@ min_area = 1000
 sequence = 8
 condition = "sunny" # condition for color profile only input "cloudy" or "sunny"
 
-for i in range(4):
-    if i == 3:
-        continue
-    color_profile = i
-    processor.main_mission_1_post_processing(sequence, color_profile, condition, min_area)
-    lf.filter_near_duplicates(lf.choose_folder(color_profile))
+
+processor.main_mission_1_post_processing(sequence, condition, min_area)
+lf.filter_near_duplicates()
 
