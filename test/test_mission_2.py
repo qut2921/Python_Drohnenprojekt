@@ -42,7 +42,7 @@ async def mission_2():
     home_longitude = home.longitude_deg
     
     # set target location
-    mission_locations = [(48.767712, 11.336947)] # target location
+    mission_locations = [(48.76809213, 11.33690275)] # target location
 
     # 3. Start camera
     weatherConditions = "sunny"  # or "sunny"

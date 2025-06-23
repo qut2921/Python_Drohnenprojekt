@@ -225,8 +225,8 @@ async def main_mission_1(drone, vid, sequence, logfile):
     new_dir = True
     last_time_saved = time.time()
     hover_time_stamp = time.time()
-    save_delay = 1  # Save image every 1 seconds
-    hover_time = 10
+    save_delay = 0.5  # Save image every 1 seconds
+    hover_time = 4
 
     print("Inside function")
 
@@ -274,7 +274,7 @@ async def main_mission_1(drone, vid, sequence, logfile):
 
 async def main_mission_2(drone, vid, colorProfile, condition, logfile):
 
-    min_area = 1500
+    min_area = 1200
     detectedObject = False
 
     # Telemetry data that will come from the flight controller
