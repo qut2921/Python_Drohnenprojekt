@@ -159,7 +159,7 @@ def draw_rectangle_with_text(
     text_colour = (0, 0, 255)  # Red
 
     # Write text and get width and size
-    text = f"{name}, ({latitude:.6f} lat, {longitude:.6f} long, area: {area}, id: {object_id})"
+    text = f"({name}, area: {area}, id: {object_id})"
     (text_width, text_height), _ = cv2.getTextSize(text, font, scale, thickness)
 
     # Set default text position

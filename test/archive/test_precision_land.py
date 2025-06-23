@@ -1,62 +1,49 @@
-# test_precision_land.py
-
-# import modules in different directories
 import sys
 import os
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+import control.controller_functions as cl 
+from mavsdk.telemetry import LandedState
+import control.logging as log
 import asyncio
-from mavsdk import System
-from mavsdk.offboard import PositionNedYaw
-import control.controller_functions as cl
-import random
-
-class DummyImageProcessing:
-    def get_target_offset(self):
-        return 0.2, -0.3
+import math
+from mavsdk import system
 
 
-async def run():
-    drone = System()
-     # 1 ️ Connect to the drone
-    drone = await cl.connect_drone()
+async def test_precision_landing():
+    """
+    Test for precision landing mission
+    """
+    logfile = "precision_landing.log"
+    mission_id = 3
+    
+    # connect to the drone
+    drone = await cl.connect_drone(logfile)
 
-    # 2  User confirmation before arming
-    while True:
-        user_input = input(
-            "🚦 Ready to arm and start mission? (y/n): ").strip().lower()
-        if user_input == "y":
+    # arm the drone
+    await cl.arm_drone(drone, logfile)
+
+    # takeoff to 5 meters
+    target_altitude = 10.0
+    await cl.default_takeoff(drone, target_altitude, logfile)
+    await asyncio.sleep(1)
+
+    # precision landing
+    n_ned = 10.0
+    e_ned = -10.0
+
+    await cl.precision_land_test(drone, mission_id, n_ned, e_ned, logfile)
+
+    async for state in drone.telemetry.landed_state():
+        print(f"\r🔍 Landed State: {state}", end="")
+        if state == LandedState.ON_GROUND:
+            log.log("\n✅ Drone is confirmed landed.\n", logfile)
+            await cl.default_takeoff(drone, target_altitude, logfile)
             break
-        elif user_input == "n":
-            print("❌ Mission aborted by user.")
-            exit(0)
         else:
-            print("⚠️ Please enter 'y' to start or 'n' to abort.")
+            continue
 
-    # 3 ️ Arm the drone
-    await cl.arm_drone(drone)
-    await asyncio.sleep(2)
 
-    # 4  User confirmation before arming
-    while True:
-        user_input = input(
-            "🚦 Ready to arm and start mission? (y/n): ").strip().lower()
-        if user_input == "y":
-            break
-        elif user_input == "n":
-            print("❌ Mission aborted by user.")
-            exit(0)
-        else:
-            print("⚠️ Please enter 'y' to start or 'n' to abort.")
-
-    # 5  Take off to the first altitude
-    await cl.default_takeoff(drone, 5)
-    await asyncio.sleep(2)
-
-    # 6  Precision landing test
-    print("🚀 Ready for precision landing test")
-    image_processing = DummyImageProcessing()
-    await cl.precision_land(drone, image_processing)
-
+# Run the test
 if __name__ == "__main__":
-    asyncio.run(run())
+    asyncio.run(test_precision_landing())
+    print("Precision landing test completed.")

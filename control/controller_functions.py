@@ -182,7 +182,7 @@ async def goto_location(drone: System, target_latitude: float,
     await drone.action.goto_location(target_latitude,
                                      target_longitude,
                                      target_absolute_alt,
-                                     0.0)
+                                     126.0)
     log.log("🔄 Flying to target location...", logfile)
     # Waits until the drone reaches the target location
     while True:
@@ -200,7 +200,7 @@ async def goto_location(drone: System, target_latitude: float,
         # Checks if the drone reached target
         if (abs(current_latitude - target_latitude) < 0.000005 and
                 abs(current_longitude - target_longitude) < 0.00005 and
-                abs(current_height - target_altitude) < 1):
+                abs(current_height - target_altitude) < 2):
             log.log("\n✅ Target location reached\n", logfile)
             break
 
