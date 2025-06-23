@@ -25,6 +25,7 @@ async def mission_1():
     """
     # Start logging
     logfile = "mission1.log"
+    log.log("---------------------------------", logfile)
     log.log("Mission 1 gestartet", logfile)
 
     # 1. Connect to the drone
