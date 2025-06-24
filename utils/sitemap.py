@@ -16,7 +16,9 @@ def load_image_data(yaml_path: str):
     The YAML file should contain a list of dictionaries where each dictionary represents an image.
     Expected keys for each image:
       - 'filename'          : Filename of the image.
-      - 'centre'             : The center coordinates as a list or tuple [lat, lon].
+      - 'lat'               : Latitude of the image center.
+      - 'lon'               : Longitude of the image center.
+      - 'heading'            : Heading of the camera in degrees.
       - 'altitude'           : Altitude above ground of the camera.
 
     Parameters:
@@ -51,8 +53,9 @@ def compose_images(image_data, images_folder: str, scale: float = 1000000):
     # Determine bounding box for the images in coordinate space
     boxes = []
     for img in image_data:
-        lat = float(img['centre']['lat'])
-        lon = float(img['centre']['lon'])
+        lat = float(img['lat'])
+        lon = float(img['lon'])
+        heading = float(img['heading'])
         width_coord, height_coord = gps.calculate_frame_dimensions(img['altitude'], lat)
         left = lon - width_coord / 2
         upper = lat - height_coord / 2
@@ -73,8 +76,9 @@ def compose_images(image_data, images_folder: str, scale: float = 1000000):
     
     for img in image_data:
         filename = img['filename']
-        lat = float(img['centre']['lat'])
-        lon = float(img['centre']['lon'])
+        lat = float(img['lat'])
+        lon = float(img['lon'])
+        heading = float(img['heading'])
         width_coord, height_coord = gps.calculate_frame_dimensions(img['altitude'], lat)
         print(f"Image {filename} at center ({lat}, {lon}) with width {width_coord} and height {height_coord}")
         width_pix = int(width_coord * scale)
@@ -91,7 +95,11 @@ def compose_images(image_data, images_folder: str, scale: float = 1000000):
         # Resize image to given extents in pixels if needed
         if im.size != (width_pix, height_pix):
             im = im.resize((width_pix, height_pix), Image.Resampling.LANCZOS)
-        
+
+        # Rotate image by heading (negative for clockwise rotation)
+        if heading != 0:
+            im = im.rotate(-heading, expand=True, resample=Image.Resampling.BICUBIC)
+
         # Calculate top-left position for the image relative to composite (in pixels)
         left_offset = int((lon - width_coord/2 - min_left) * scale)
         upper_offset = int((lat - height_coord/2 - min_upper) * scale)
