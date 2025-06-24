@@ -8,7 +8,8 @@ setup(
         'picamera2>=0.3.25',
         'shapely',
         'flask>=2.0.0',
-        'pyyaml'
+        'pyyaml',
+        'pandas'
         ],
     include_package_data=True,
     packages=find_packages(exclude=[

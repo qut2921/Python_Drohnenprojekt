@@ -9,16 +9,17 @@ import yaml
 from PIL import Image
 import gps_calculator as gps
 import numpy as np
+import pandas as pd
 
-def load_image_data(yaml_path: str = "output/images.yaml"):
+def load_image_data_yaml(yaml_path: str = "output/images.yaml"):
     """
     Load image data from a YAML file.
     
     The YAML file should contain a list of dictionaries where each dictionary represents an image.
     Expected keys for each image:
       - 'filename'          : Filename of the image.
-      - 'lat'               : Latitude of the image center.
-      - 'lon'               : Longitude of the image center.
+      - 'latitude_drone'    : Latitude of the image center.
+      - 'longitude_drone'   : Longitude of the image center.
       - 'heading'            : Heading of the camera in degrees.
       - 'altitude'           : Altitude above ground of the camera.
 
@@ -31,6 +32,29 @@ def load_image_data(yaml_path: str = "output/images.yaml"):
     with open(yaml_path, "r", encoding="utf-8") as file:
         data = yaml.safe_load(file)
     return data
+
+def load_image_data_csv(csv_path: str = "output/images.csv"):
+    """
+    Load image data from a CSV file containing a header row.
+    
+    The CSV file should contain columns for:
+      - 'filename'          : Filename of the image.
+      - 'latitude_drone'    : Latitude of the image center.
+      - 'longitude_drone'   : Longitude of the image center.
+      - 'heading'            : Heading of the camera in degrees.
+      - 'altitude'           : Altitude above ground of the camera.
+
+    Parameters:
+        csv_path (str): The file path to the CSV file.
+        
+    Returns:
+        list: A list of dictionaries containing image data.
+    """
+    df = pd.read_csv(csv_path, header=0, encoding="utf-8", delimiter=';')
+    if df.empty:
+        raise ValueError("CSV file is empty or does not contain valid data.")
+
+    return df.to_dict(orient='records')
 
 def compose_images(image_data, images_folder: str = "output/images", output_path: str = "output/composite.png"):
     """
@@ -116,7 +140,7 @@ def compose_images(image_data, images_folder: str = "output/images", output_path
 
 # Beispiel: Anwendung der Funktionen
 if __name__ == "__main__":
-    # Laden der Bilddaten aus der YAML-Datei
-    image_data = load_image_data()
+    # Laden der Bilddaten aus der CSV-Datei
+    image_data = load_image_data_csv()
     print("Loaded image data:", image_data)
     composed_image = compose_images(image_data)
