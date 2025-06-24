@@ -11,16 +11,16 @@ from mavsdk import system
 
 async def run(landingPosition, targetType, weatherConditions, geofence=None):
     # Start logging
-    logfile = "logs/mission2.log"
+    logfile = "mission2.log"
     log.log("---------------------------------", logfile)
     log.log("Mission 2 gestartet", logfile)
 
     # Hier könnte der Code für die Ausführung der Mission 2 stehen
     log.log(f"Mission 2 gestartet mit Landeposition: {landingPosition}, Zieltyp: {targetType}, Wetterbedingungen: {weatherConditions}", logfile)
     if geofence:
-        print(f"Geofence aktiviert mit Punkten: {geofence}")
+        log.log(f"Geofence aktiviert mit Punkten: {geofence}",logfile)
     else:
-        print("Geofence über QGC gesetzt")
+        log.log("Geofence über QGC gesetzt",logfile)
     pass
 
     """

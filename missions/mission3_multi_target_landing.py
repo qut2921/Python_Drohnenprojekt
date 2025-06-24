@@ -23,7 +23,7 @@ async def run(landingPosition, waypoints, targetNumber, targetType, weatherCondi
     13. landing (at final location)
     """
     # Start logging
-    logfile = "logs/mission3.log"
+    logfile = "mission3.log"
     log.log("---------------------------------", logfile)
     log.log("Mission 3 gestartet", logfile)
 
@@ -54,7 +54,11 @@ async def run(landingPosition, waypoints, targetNumber, targetType, weatherCondi
     except Exception as e:
         log.log(f"⚠️ Could not set COM_DISARM_LAND: {e}", logfile)
 
-    # set location 
+    # set location
+    home = await drone.telemetry.home().__anext__()
+    home_lat = home.latitude_deg
+    home_long = home.longitude_deg
+    landingPosition = (home_lat,home_long)
     mission_locations = waypoints.append(landingPosition)  # target location
 
     # 3. Start camera

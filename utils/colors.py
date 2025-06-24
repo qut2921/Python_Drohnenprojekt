@@ -31,20 +31,20 @@ def set_colorProfiles(n, condition):
 
         if n == 2:
             name = "Yellow"
-            hsv_lower = (62, 31, 69)
-            hsv_upper = (84, 160, 255)
+            hsv_lower = (72, 52, 69)
+            hsv_upper = (90, 160, 255)
             return (name, hsv_lower, hsv_upper)
 
         if n == 3:
-            name = "Red2"
+            name = "Red"
             hsv_lower = (180, 255, 0)
             hsv_upper = (180, 255, 255)
             return (name, hsv_lower, hsv_upper)
 
         if n == 4:
             name = "Orange"
-            hsv_lower = (101, 126, 0)
-            hsv_upper = (180, 255, 255)
+            hsv_lower = (102, 40, 0)
+            hsv_upper = (116, 255, 255)
             return (name, hsv_lower, hsv_upper)
         
         if n == 5:
@@ -75,20 +75,20 @@ def set_colorProfiles(n, condition):
 
         if n == 2:
             name = "Yellow"
-            hsv_lower = (62, 31, 69)
-            hsv_upper = (84, 160, 255)
+            hsv_lower = (81, 68, 69)
+            hsv_upper = (94, 160, 255)
             return (name, hsv_lower, hsv_upper)
 
         if n == 3:
-            name = "Red2"
+            name = "Red"
             hsv_lower = (6, 0, 0)
             hsv_upper = (0, 255, 255)
             return (name, hsv_lower, hsv_upper)
 
         if n == 4:
             name = "Orange"
-            hsv_lower = (102, 0, 137)
-            hsv_upper = (113, 255, 255)
+            hsv_lower = (102, 140, 0)
+            hsv_upper = (116, 255, 255)
             return (name, hsv_lower, hsv_upper)
         
         if n == 5:

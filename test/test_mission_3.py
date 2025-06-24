@@ -24,7 +24,8 @@ async def mission_3():
 
     """
     # Start logging
-    logfile = "logs/mission3.log"
+    logfile = "mission3.log"
+    log.log("---------------------------------", logfile)
     log.log("Mission 3 gestartet", logfile)
     mission_id = 3
     land_mode = "default"  # default or offboard
@@ -50,12 +51,14 @@ async def mission_3():
         log.log(f"⚠️ Could not set COM_DISARM_LAND: {e}", logfile)
 
     # set location 
-    mission_locations = [(48.76758, 11.33717),   # blue target location
-                         (48.76750, 11.33720)]   # yellow target location
+    mission_locations = [(48.767705, 11.337048),
+                         (48.767722, 11.336883), 
+                         (48.767896, 11.336564),    # blue target location
+                         (home_latitude, home_longitude)]   # yellow target location
 
     # 3. Start camera
-    weatherConditions = "cloudy"  # or "sunny"
-    targetType = "blue"  # blue target
+    weatherConditions = "sunny"  # or "sunny"
+    targetType = "red"  # blue target
     color = colors.map_color_to_id(targetType)
     vid = ip.start_videoCapture(mission_id, weatherConditions, logfile)
   # condition for color profile only input "cloudy" or "sunny"

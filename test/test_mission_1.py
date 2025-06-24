@@ -24,7 +24,8 @@ async def mission_1():
         8. Land and disarm at home location
     """
     # Start logging
-    logfile = "logs/mission1.log"
+    logfile = "mission1.log"
+    log.log("---------------------------------", logfile)
     log.log("Mission 1 gestartet", logfile)
 
     # 1. Connect to the drone
@@ -32,21 +33,41 @@ async def mission_1():
 
     # 2. Arm and Mission locations
     # Arm the drone
+
     await cl.arm_drone(drone, logfile)
 
     # Set mission locations
     home = await drone.telemetry.home().__anext__()
     home_lat = home.latitude_deg
     home_long = home.longitude_deg
-    mission_locations = [
-        {48.76756, 11.33704},
-        {48.76775, 11.33683},
-        {48.76781, 11.33669},
-        {home_lat, home_long}
+    mission_locations =  [
+        {48.7683189, 11.3357803},
+        {48.7682238, 11.3359790},
+        {48.7681286, 11.3361777},
+        {48.7680335, 11.3363763},
+        {48.7679383, 11.3365750},
+        {48.7678432, 11.3367737},
+        {48.7677480, 11.3369724},
+        {48.7676529, 11.3371711},
+        {48.7675840, 11.3373149},
+        {48.7677361, 11.3374616},
+        {48.7678312, 11.3372629},
+        {48.7679264, 11.3370642},
+        {48.7680216, 11.3368655},
+        {48.7681167, 11.3366668},
+        {48.7682119, 11.3364681},
+        {48.7683070, 11.3362694},
+        {48.7684022, 11.3360707},
+        {48.7684684, 11.3359324},
+        {48.7682807, 11.3367886},
+        {48.7681855, 11.3369873},
+        {48.7680904, 11.3371860},
+        {48.7679952, 11.3373847},
+        {home_lat, home_long}  
     ]
 
     # 3. Start camera
-    weatherConditions = "cloudy"  # or "sunny"
+    weatherConditions = "sunny"  # or "sunny"
     vid = ip.start_videoCapture(1, weatherConditions, logfile)
     sequence = 0
 

@@ -1,5 +1,6 @@
 import argparse
 from missions import mission1_mapping, mission2_precision_landing, mission3_multi_target_landing
+import asyncio
 
 def parse_coord(s):
     # If the string contains spaces AND more than one coordinate, split and check only one coordinate
@@ -49,7 +50,7 @@ if args.mission == 1:
     if args.waypoints:
         print(f"Wegpunkte: {args.waypoints}")
 
-    mission1_mapping.run(landingPosition=args.landingPosition, waypoints=args.waypoints, weatherConditions=args.weatherConditions, geofence=args.geofence)
+    asyncio.run(mission1_mapping.run(landingPosition=args.landingPosition, waypoints=args.waypoints, weatherConditions=args.weatherConditions, geofence=args.geofence))
 
 elif args.mission == 2:
     print("Mission 2")
@@ -57,7 +58,7 @@ elif args.mission == 2:
     if not(args.landingPosition and args.targetType):
         parser.error("Mission 2 erfordert landingPosition und targetType")
 
-    mission2_precision_landing.run(landingPosition=args.landingPosition, targetType=args.targetType, weatherConditions=args.weatherConditions, geofence=args.geofence)
+    asyncio.run(mission2_precision_landing.run(landingPosition=args.landingPosition, targetType=args.targetType, weatherConditions=args.weatherConditions, geofence=args.geofence))
 
 elif args.mission == 3:
     print("Mission 3")
@@ -65,7 +66,7 @@ elif args.mission == 3:
     if not(args.landingPosition and args.waypoints and args.targetNumber is not None and args.targetType):
         parser.error("Mission 3 erfordert landingPosition, waypoints, targetType und targetNumber")
 
-    mission3_multi_target_landing.run(landingPosition=args.landingPosition, waypoints=args.waypoints, targetNumber=args.targetNumber, targetType=args.targetType, weatherConditions=args.weatherConditions, geofence=args.geofence)
+    asyncio.run(mission3_multi_target_landing.run(landingPosition=args.landingPosition, waypoints=args.waypoints, targetNumber=args.targetNumber, targetType=args.targetType, weatherConditions=args.weatherConditions, geofence=args.geofence))
 
 
 
