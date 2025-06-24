@@ -10,15 +10,7 @@ import asyncio
 import os
 
 
-async def run(landingPosition, targetType, area, geofence=None):
-    # Hier könnte der Code für die Ausführung der Mission 1 stehen
-    print(f"Mission 1 gestartet mit Landeposition: {landingPosition}, Zieltyp: {targetType}, Suchgebiet: {area}")
-    if geofence:
-        print(f"Geofence aktiviert mit Punkten: {geofence}")
-    else:
-        print("Kein Geofence aktiviert")
-    pass
-
+async def run(landingPosition, waypoints, weatherConditions, geofence=None):
     """
     Mission 1
         1. Connect to the drone
@@ -33,7 +25,17 @@ async def run(landingPosition, targetType, area, geofence=None):
     """
     # Start logging
     logfile = "mission1.log"
+    log.log("---------------------------------", logfile)
     log.log("Mission 1 gestartet", logfile)
+    
+    # Hier könnte der Code für die Ausführung der Mission 1 stehen
+    log.log(f"Mission 1 gestartet mit Landeposition: {landingPosition}, Wegpunkte: {waypoints}, Wetterbedingungen: {weatherConditions}",logfile)
+    if geofence:
+        log.log(f"Geofence aktiviert mit Punkten: {geofence}",logfile)
+    else:
+        log.log("Geofence über QGC gesetzt",logfile)
+    pass
+
 
     # 1. Connect to the drone
     drone = await cl.connect_drone(logfile)
@@ -46,15 +48,11 @@ async def run(landingPosition, targetType, area, geofence=None):
     home = await drone.telemetry.home().__anext__()
     home_lat = home.latitude_deg
     home_long = home.longitude_deg
-    mission_locations = [
-        {48.76756, 11.33704},
-        {48.76775, 11.33683},
-        {48.76781, 11.33669},
-        {home_lat, home_long}
-    ]
+    landingPosition = (home_lat,home_long)
+    mission_locations = waypoints.append(landingPosition)  # Add landing position to the end of the waypoints
 
     # 3. Start camera
-    vid = ip.start_videoCapture(1, logfile)
+    vid = ip.start_videoCapture(1, weatherConditions, logfile)
     sequence = 0
 
     # 4. Take off to 5 meters
@@ -82,19 +80,17 @@ async def run(landingPosition, targetType, area, geofence=None):
                                target_altitude,
                                logfile)
         await drone.action.hold()
-        cl.save_progress(i)  
+         
 
         if i < len(mission_locations):
             # ⏳ Nur warten, wenn es NICHT der letzte Punkt ist
-            sequence = await ip.main_mission_1(drone, vid, sequence)
+            sequence = await ip.main_mission_1(drone, vid, sequence, logfile)
+            cl.save_progress(i) 
         else:
             log.log("🏁 Final point reached – skipping wait, preparing to land.", logfile)
 
 
     # 6. Land and disarm (last gps location must be the finsh)
     await cl.default_land_and_disarm(drone, logfile)
-    vid.stop()
+    ip.stop_videoCapture(vid,logfile)  # Stop video capture
     cl.reset_progress()  # Reset progress after mission completion
-
-# Run mission 1
-asyncio.run(run())

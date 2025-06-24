@@ -22,7 +22,7 @@ async def mission_3():
     13. landing (at final location)
     """
     # Start logging
-    logfile = "mission3.log"
+    logfile = "logs/mission3_einfach.log"
     log.log("Mission 3 gestartet", logfile)
 
 
