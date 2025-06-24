@@ -66,3 +66,72 @@ def calculate_gps(
     lon_object = long_position + delta_lon  # [degrees]
 
     return x_distance, y_distance, lat_object, lon_object, n_ned, e_ned
+
+
+def calculate_frame_dimensions(altitude, fov_horizontal=66, fov_vertical=41):
+    """Calculate the frame dimensions based on GPS position.
+    
+    Returns the width and height of the frame in meters based on the altitude and field of view (FOV) of the camera.
+    
+    Args:
+        altitude (float): Altitude of the drone in meters.
+        fov_horizontal (float, optional): Horizontal field of view of the camera in degrees. Defaults to 66.
+        fov_vertical (float, optional): Vertical field of view of the camera in degrees. Defaults to 41.
+    Returns:
+        tuple: A tuple containing the width and height of the frame in meters.
+    """
+    
+    # Convert FOV from degrees to radians
+    fov_horizontal_rad = np.radians(fov_horizontal)
+    fov_vertical_rad = np.radians(fov_vertical)
+
+    # Calculate the width and height of the frame in meters
+    width = 2 * altitude * np.tan(fov_horizontal_rad / 2)
+    height = 2 * altitude * np.tan(fov_vertical_rad / 2)
+
+    return width, height
+
+def calculate_relative_x_y_distance(lat1, lon1, lat2, lon2):
+    """Calculate the relative distance between two GPS coordinates.
+
+    Args:
+        lat1 (float): Latitude of the first point in degrees.
+        lon1 (float): Longitude of the first point in degrees.
+        lat2 (float): Latitude of the second point in degrees.
+        lon2 (float): Longitude of the second point in degrees.
+
+    Returns:
+        (float, float): A tuple containing the relative distance in the North and East directions in meters.
+    """
+    # Convert latitude and longitude from degrees to radians
+    lat1_rad = np.radians(lat1)
+    lon1_rad = np.radians(lon1)
+    lat2_rad = np.radians(lat2)
+    lon2_rad = np.radians(lon2)
+
+    # Calculate the differences in coordinates
+    dlat = lat2_rad - lat1_rad
+    dlon = lon2_rad - lon1_rad
+
+    # Radius of the Earth in meters
+    R = 6371000
+
+    # Calculate the North and East distances using the Haversine formula
+    n_distance = R * dlat  # North distance in meters
+    e_distance = R * dlon * np.cos((lat1_rad + lat2_rad) / 2)  # East distance in meters
+
+    return n_distance, e_distance
+
+if __name__ == "__main__":
+    # Example usage calculate_frame_dimensions
+    altitude = 15  # Altitude in meters
+    width, height = calculate_frame_dimensions(altitude)
+    print(f"Frame Width: {width} m")
+    print(f"Frame Height: {height} m")
+
+    # Example usage calculate_relative_x_y_distance
+    lat1, lon1 = 48.7676632, 11.3370734
+    lat2, lon2 = 48.76786, 11.3366577
+    n_distance, e_distance = calculate_relative_x_y_distance(lat1, lon1, lat2, lon2)
+    print(f"North Distance: {n_distance} m")
+    print(f"East Distance: {e_distance} m")
