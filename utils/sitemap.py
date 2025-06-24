@@ -8,8 +8,9 @@ import os
 import yaml
 from PIL import Image
 import gps_calculator as gps
+import numpy as np
 
-def load_image_data(yaml_path: str):
+def load_image_data(yaml_path: str = "output/images.yaml"):
     """
     Load image data from a YAML file.
     
@@ -31,7 +32,7 @@ def load_image_data(yaml_path: str):
         data = yaml.safe_load(file)
     return data
 
-def compose_images(image_data, images_folder: str, scale: float = 1000000):
+def compose_images(image_data, images_folder: str = "output/images", output_path: str = "output/composite.png"):
     """
     Compose images into a single composite image based on their center coordinates and extents.
     The provided values (centre and extents) are treated as coordinates. A scaling factor is applied to convert these
@@ -44,78 +45,78 @@ def compose_images(image_data, images_folder: str, scale: float = 1000000):
     Parameters:
         image_data (list): List of dictionaries containing image metadata.
         images_folder (str): Folder path where the image files are stored.
-        scale (float): Multiplicative factor to convert coordinate units to pixels.
-                       Default value is 1000000.
-        
+        output_folder (str): Folder path where the output image will be saved.
+    Raises:
+        ValueError: If no image data is provided or if the images cannot be loaded.
     Returns:
         Image: A PIL.Image object with the composed result.
     """
-    # Determine bounding box for the images in coordinate space
-    boxes = []
+
+    if not image_data:
+        raise ValueError("No image data provided.")
+
+    # Referenz: Erstes Bild
+    ref = image_data[0]
+    ref_lat, ref_lon, ref_heading, ref_alt = ref["latitude_drone"], ref["longitude_drone"], ref["heading"], ref["altitude"]
+
+    # Bildgröße in Metern (alle Bilder gleich, da gleiche Höhe)
+    frame_width_m, frame_height_m = gps.calculate_frame_dimensions(ref_alt)
+    # Lade das erste Bild, um die Pixelgröße zu bestimmen
+    ref_img_path = os.path.join(images_folder, ref["filename"])
+    ref_img = Image.open(ref_img_path)
+    img_width_px, img_height_px = ref_img.size
+    px_per_meter_x = img_width_px / frame_width_m
+    px_per_meter_y = img_height_px / frame_height_m
+    px_per_meter = (px_per_meter_x + px_per_meter_y) / 2  # Mittelwert
+
+    # Koordinaten aller Bilder relativ zum ersten Bild (in Meter, rotiert)
+    coords = []
     for img in image_data:
-        lat = float(img['lat'])
-        lon = float(img['lon'])
-        heading = float(img['heading'])
-        width_coord, height_coord = gps.calculate_frame_dimensions(img['altitude'], lat)
-        left = lon - width_coord / 2
-        upper = lat - height_coord / 2
-        right = lon + width_coord / 2
-        lower = lat + height_coord / 2
-        boxes.append((left, upper, right, lower))
-    
-    min_left = min(box[0] for box in boxes)
-    min_upper = min(box[1] for box in boxes)
-    max_right = max(box[2] for box in boxes)
-    max_lower = max(box[3] for box in boxes)
-    
-    # Scale coordinate bounding box to pixels
-    composite_width = int((max_right - min_left) * scale)
-    composite_height = int((max_lower - min_upper) * scale)
-    
-    composite = Image.new("RGBA", (composite_width, composite_height), (255, 255, 255, 0))
-    
-    for img in image_data:
-        filename = img['filename']
-        lat = float(img['lat'])
-        lon = float(img['lon'])
-        heading = float(img['heading'])
-        width_coord, height_coord = gps.calculate_frame_dimensions(img['altitude'], lat)
-        print(f"Image {filename} at center ({lat}, {lon}) with width {width_coord} and height {height_coord}")
-        width_pix = int(width_coord * scale)
-        height_pix = int(height_coord * scale)
+        n, e = gps.calculate_relative_x_y_distance(ref_lat, ref_lon, img["latitude_drone"], img["longitude_drone"])
+        # Rotation um -ref_heading (damit das erste Bild "oben" ist)
+        theta = np.radians(-ref_heading)
+        n_rot = n * np.cos(theta) - e * np.sin(theta)
+        e_rot = n * np.sin(theta) + e * np.cos(theta)
+        coords.append((n_rot, e_rot, img))
 
-        image_path = os.path.join(images_folder, filename)
-        try:
-            im = Image.open(image_path).convert("RGBA")
-        except Exception as e:
-            print(f"Fehler beim Laden des Bildes {filename}: {e}")
-            continue
+    # Bildpositionen in Pixel
+    positions = []
+    for n_rot, e_rot, img in coords:
+        x = e_rot * px_per_meter
+        y = -n_rot * px_per_meter  # -n_rot, weil Bildy-Achse nach unten
+        positions.append((x, y, img))
 
-        print(f"Processing image: {filename} at center ({lat}, {lon}) with size ({width_pix}, {height_pix})")
-        # Resize image to given extents in pixels if needed
-        if im.size != (width_pix, height_pix):
-            im = im.resize((width_pix, height_pix), Image.Resampling.LANCZOS)
+    # Bestimme Bounding Box
+    min_x = min(x for x, y, _ in positions)
+    min_y = min(y for x, y, _ in positions)
+    max_x = max(x for x, y, _ in positions)
+    max_y = max(y for x, y, _ in positions)
 
-        # Rotate image by heading (negative for clockwise rotation)
-        if heading != 0:
-            im = im.rotate(-heading, expand=True, resample=Image.Resampling.BICUBIC)
+    # Größe des Gesamtbildes
+    composite_width = int(np.ceil(max_x - min_x + img_width_px))
+    composite_height = int(np.ceil(max_y - min_y + img_height_px))
+    composite = Image.new("RGBA", (composite_width, composite_height), (0, 0, 0, 0))
+    print(f"Composite image size: {composite_width}x{composite_height} pixels")
 
-        # Calculate top-left position for the image relative to composite (in pixels)
-        left_offset = int((lon - width_coord/2 - min_left) * scale)
-        upper_offset = int((lat - height_coord/2 - min_upper) * scale)
-        composite.alpha_composite(im, dest=(left_offset, upper_offset))
-        
+    # Füge alle Bilder ein
+    for x, y, img in positions:
+        img_path = os.path.join(images_folder, img["filename"])
+        im = Image.open(img_path).convert("RGBA")
+        # Rotiere Bild um (img_heading - ref_heading)
+        rot_angle = -(img["heading"] - ref_heading)
+        im_rot = im.rotate(rot_angle, expand=True, resample=Image.Resampling.BICUBIC)
+        # Berechne Einfügeposition (Mitte des Bildes auf (x-min_x, y-min_y))
+        paste_x = int(x - min_x )
+        paste_y = int(y - min_y )
+        composite.alpha_composite(im_rot, (paste_x, paste_y))
+
+    # Speichere das Ergebnis
+    composite.save(output_path)
     return composite
 
 # Beispiel: Anwendung der Funktionen
 if __name__ == "__main__":
-    # Pfad zur YAML-Datei, z.B. "output/images.yaml"
-    yaml_file_path = "output/images.yaml"
-    images_folder = "output/images"  # Ordner, in dem die Bilddateien liegen
-    image_data = load_image_data(yaml_file_path)
-    print(f"{image_data}")
-    composed_image = compose_images(image_data, images_folder)
-    # Speichern des zusammengesetzten Bildes
-    output_path = "output/composite.png"
-    composed_image.save(output_path)
-    print(f"Composite image saved to {output_path}")
+    # Laden der Bilddaten aus der YAML-Datei
+    image_data = load_image_data()
+    print("Loaded image data:", image_data)
+    composed_image = compose_images(image_data)
