@@ -6,7 +6,7 @@ import utils.list_filter as lf
 
 min_area = 1000
 # Blue = 0, Red = 1, Yellow = 2, Orange = 4
-sequence = 22
+sequence = 8
 condition = "sunny" # condition for color profile only input "cloudy" or "sunny"
 
 
