@@ -13,7 +13,7 @@ def filter_near_duplicates():
     df = pd.read_csv("Mission1/Found_object/image_processed.csv", header=None)
 
     # Set descriptive column names
-    df.columns = ["sequence", "image", "object_id", "color", "shape", "latitude", "longitude"]
+    df.columns = ["sequence", "image", "object_id", "color", "shape", "latitude", "longitude", "latitude_drone", "longitude_drone"]
 
     # Initialize keep mask
     keep_mask = [True] * len(df)

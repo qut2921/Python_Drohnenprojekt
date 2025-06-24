@@ -117,7 +117,7 @@ def locate_object_and_save(
 
                 with open(f"{output_dir}/image_processed.csv", "a") as processed_log_file:
                     processed_log_file.write(
-                        f"{output_dir}, {image_filename}, {object_id}, {name}, {shape}, {lat_object:.6f}, {long_object:.6f}\n")
+                        f"{output_dir},processed_{image_filename},{object_id},{name},{shape},{lat_object:.6f},{long_object:.6f},{lat_position:.6f},{long_position:.6f}\n")
 
                 if detectedObject == False:
                     detectedObject = True
