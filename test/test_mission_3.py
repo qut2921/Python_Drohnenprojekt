@@ -13,14 +13,14 @@ from mavsdk import system
 async def mission_3():
     """
     1. connect to the drone
-    2. user confirmation before arming
-    3. arm the drone and set location
-    4. user confirmation before takeoff
-    5. takeoff to  15 meters
-    6. fly to location (for all targets)
-    7. precisionland on target (for all targets)
-    8. takeoff to 15 meters (for all targets)
-    13. landing (at final location)
+    2. arm the drone and set location
+    3. set home location
+    4. set mission locations
+    5. Start camera
+    6. takeoff to  15 meters
+    7. fly to location (for all targets)
+    8. precisionland on target (for all targets)
+    9. landing (at final location)
 
     """
     # Start logging
@@ -35,11 +35,10 @@ async def mission_3():
     drone = await cl.connect_drone(logfile)
 
     # 2. arm the drone and set location
-    # arm the drone  
     await cl.arm_drone(drone, logfile)
     await asyncio.sleep(1)
 
-    # set home location
+    # 3. set home location
     home = await drone.telemetry.home().__anext__()
     home_latitude = home.latitude_deg
     home_longitude = home.longitude_deg
@@ -50,27 +49,26 @@ async def mission_3():
     except Exception as e:
         log.log(f"⚠️ Could not set COM_DISARM_LAND: {e}", logfile)
 
-    # set location 
+    # 4. set mission locations
     mission_locations = [(48.767705, 11.337048),
                          (48.767722, 11.336883), 
                          (48.767896, 11.336564),    # blue target location
                          (home_latitude, home_longitude)]   # yellow target location
 
-    # 3. Start camera
+    # 5. Start camera
     weatherConditions = "sunny"  # or "sunny"
     targetType = "red"  # blue target
     color = colors.map_color_to_id(targetType)
     vid = ip.start_videoCapture(mission_id, weatherConditions, logfile)
   # condition for color profile only input "cloudy" or "sunny"
 
-    # 4. takeoff to 15 meters
+    # 6. takeoff to 15 meters
     target_altitude = 15.0
     await cl.default_takeoff(drone, target_altitude, logfile)
     await asyncio.sleep(1)
 
-    # 5. fly to location
+    # 7. fly to location
     start_index = cl.load_progress()
-    # lat und long muss bei Hanna umgedreht werden (longitude, latitude)
     for i, (latitude, longitude) in enumerate(mission_locations, start=1):
         # Skip already visited locations
         if i <= start_index:
@@ -85,7 +83,7 @@ async def mission_3():
         await drone.action.hold()
 
         if i < len(mission_locations):
-            #7. precisionland on target
+            # 8. precisionland on target
             position = await drone.telemetry.position().__anext__()
             center_lat = position.latitude_deg
             center_lon = position.longitude_deg
@@ -121,7 +119,7 @@ async def mission_3():
             log.log("✅ All locations completed.", logfile)
             break
 
-    # 6. landing 
+    # 9. landing 
     await cl.default_land_and_disarm(drone, logfile)
     ip.stop_videoCapture(vid, logfile)
     

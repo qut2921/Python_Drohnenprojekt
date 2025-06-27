@@ -13,15 +13,14 @@ import os
 async def mission_1():
     """
     Mission 1
-        1. Connect to the drone
-        2. User confirmation before arming
-        3. Arm the drone and set locations
-        4. User confirmation before takeoff
+        1. connect to the drone
+        2. arm the drone and set location
+        3. set home location
+        4. set mission locations
         5. Start camera
-        5. Take off to 5 meters
-        6. Fly to each location
-        7. Wait for 45 seconds at each location
-        8. Land and disarm at home location
+        6. takeoff to  15 meters
+        7. fly to location (for all targets)
+        8. landing (at final location)
     """
     # Start logging
     logfile = "mission1.log"
@@ -31,15 +30,16 @@ async def mission_1():
     # 1. Connect to the drone
     drone = await cl.connect_drone(logfile)
 
-    # 2. Arm and Mission locations
-    # Arm the drone
+    # 2. Arm
 
     await cl.arm_drone(drone, logfile)
 
-    # Set mission locations
+    # 3. Set home locations
     home = await drone.telemetry.home().__anext__()
     home_lat = home.latitude_deg
     home_long = home.longitude_deg
+    
+    # 4. Set mission locations
     mission_locations =  [
         {48.7683189, 11.3357803},
         {48.7682238, 11.3359790},
@@ -66,17 +66,17 @@ async def mission_1():
         {home_lat, home_long}  
     ]
 
-    # 3. Start camera
+    # 5. Start camera
     weatherConditions = "sunny"  # or "sunny"
     vid = ip.start_videoCapture(1, weatherConditions, logfile)
     sequence = 0
 
-    # 4. Take off to 5 meters
+    # 6. Take off to 5 meters
     target_altitude = 5.0
     await cl.default_takeoff(drone, target_altitude, logfile)
     await asyncio.sleep(1)
 
-    # 5. Fly to each location
+    # 7. Fly to each location
     start_index = cl.load_progress()
     target_altitude = 15.0  # Set target altitude for the mission
     # lat und long muss bei Hanna umgedreht werden (longitude, latitude)
@@ -106,7 +106,7 @@ async def mission_1():
             log.log("🏁 Final point reached – skipping wait, preparing to land.", logfile)
 
 
-    # 6. Land and disarm (last gps location must be the finsh)
+    # 8. Land and disarm (last gps location must be the finsh)
     await cl.default_land_and_disarm(drone, logfile)
     ip.stop_videoCapture(vid,logfile)  # Stop video capture
     cl.reset_progress()  # Reset progress after mission completion

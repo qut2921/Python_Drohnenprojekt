@@ -13,7 +13,16 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 def set_colorProfiles(n, condition):
     """Set color profiles for object detection.
 
-    n: 0: blue, 1: red, 2: yellow, 3: red2
+    Args:
+        n: 0: blue, 1: red, 2: yellow, 3: red2
+        condition: "cloudy" or "sunny"
+
+    Returns:
+        (name, hsv_lower, hsv_upper):
+        A tuple containing the name and HSV bounds for the specified color profile.
+        Name is a string representing the color,
+        hsv_lower is a tuple representing the lower HSV bounds,
+        hsv_upper is a tuple representing the upper HSV bounds.
     """
 
     if condition == "cloudy":
@@ -75,7 +84,7 @@ def set_colorProfiles(n, condition):
 
         if n == 2:
             name = "Yellow"
-            hsv_lower = (81, 68, 69)
+            hsv_lower = (64, 68, 69)
             hsv_upper = (94, 160, 255)
             return (name, hsv_lower, hsv_upper)
 
@@ -107,6 +116,18 @@ def set_colorProfiles(n, condition):
         raise ValueError("Invalid condition. Must be 'cloudy' or 'sunny'.")
 
 def map_color_to_id(color):
+    """Map color names to IDs. This is used as part of the webserver which
+    utilizes a GUI to start the mission scripts. For various functions, the color
+    is represented by an ID, which is used to identify the color in the code.
+    In the GUI, the color is represented by a string.
+    
+    Args:
+        color (str): The color name as a string. Must be one of "blue", "red", "yellow", or "orange".
+
+    Returns:
+        int: The ID corresponding to the color.
+    """
+    
     if color == "blue":
         return 0
     elif color == "red":

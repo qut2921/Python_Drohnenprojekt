@@ -1,8 +1,31 @@
 """
-Commands to read telemetry data from the drone and send it to the companion computer.
+Asynchronous telemetry interface for retrieving real-time drone data using MAVSDK.
 
-If communication is lost, an exception will be raised after a timeout.
+This module defines asynchronous functions to read telemetry data from a drone and forward it
+to a companion computer for further use in control logic, logging, or image processing tasks.
+It includes timeout-handling mechanisms to detect communication loss and trigger fallback actions.
+
+Functionality includes:
+    - Retrieving drone parameters such as battery, position, altitude, orientation 
+        (Euler angles), velocity, GPS info, and heading.
+    - Monitoring connection status to detect communication interruptions.
+    - Aggregating key parameters in parallel for time-sensitive tasks,
+        like real-time image processing or testing scenarios.
+
+All telemetry reads are wrapped in `asyncio.wait_for()` to ensure graceful 
+failure and logging on timeout.
+
+Usage:
+    Call these functions from an `asyncio` event loop with a connected MAVSDK 
+    drone instance.
+
+Note:
+    - Requires the MAVSDK-Python library (`mavsdk`).
+    - Logs timeout exceptions using a custom `control.error_message` module.
+    - Example use cases: drone navigation, camera tracking, position estimation.
+
 """
+
 
 import asyncio
 import mavsdk
@@ -130,11 +153,29 @@ async def monitor_communication(drone):
 
 
 async def get_parameters_for_image_processing(drone):
-    """This function gets the parameters needed for image processing.
-    The function are executed in parallel to save time.
-    Once a function times out due to a lost of communication, the function will
-    break which will lead to RTL.
     """
+    Retrieves key telemetry parameters required for image processing tasks.
+
+    This asynchronous function concurrently gathers the drone's GPS position,
+    Euler attitude angles, and communication status using the MAVSDK telemetry API.
+    By executing requests in parallel via `asyncio.gather`, the function optimizes for latency.
+    If any parameter retrieval fails (e.g. due to lost connection), it returns `None` for all values
+    and sets a fallback key flag, which may trigger a Return-to-Launch (RTL) procedure.
+
+    Args:
+        drone: MAVSDK drone instance from which telemetry data is fetched.
+
+    Returns:
+        tuple:
+            - latitude: Latitude in degrees.
+            - longitude: Longitude in degrees.
+            - altitude: Relative altitude in meters.
+            - roll: Roll angle in degrees.
+            - pitch: Pitch angle in degrees.
+            - yaw: Yaw angle in degrees.
+            - status: Drone connection status object.
+            - key: Status flag (0 if successful, 1 if any telemetry data failed).
+"""
 
     # Set a global timeout for all operations combined
     results = await asyncio.gather(
@@ -164,11 +205,31 @@ async def get_parameters_for_image_processing(drone):
 
 
 async def get_parameters_for_indoor_testing(drone):
-    """This function gets the parameters needed for image processing.
-    The function are executed in parallel to save time.
-    Once a function times out due to a lost of communication, the function will
-    break which will lead to RTL.
     """
+    Retrieves key telemetry parameters required for image processing tasks.
+    This asynchronous function concurrently gathers the drone's GPS position,
+    Euler attitude angles, and communication status using the MAVSDK telemetry API.
+    By executing requests in parallel via `asyncio.gather`, the function optimizes for latency.
+    If any parameter retrieval fails (e.g. due to lost connection), it returns `None` for all values
+    and sets a fallback key flag, which may trigger a Return-to-Launch (RTL) procedure.
+    For indoor test, pre defined values for latitude, longitude and altitude
+    are defined. This is to adress the lack of GPS connection inside the flight
+    lab.
+
+    Args:
+        drone: MAVSDK drone instance from which telemetry data is fetched.
+        
+    Returns:
+        tuple:
+            - latitude: Latitude in degrees.
+            - longitude: Longitude in degrees.
+            - altitude: Relative altitude in meters.
+            - roll: Roll angle in degrees.
+            - pitch: Pitch angle in degrees.
+            - yaw: Yaw angle in degrees.
+            - status: Drone connection status object.
+            - key: Status flag (0 if successful, 1 if any telemetry data failed).
+        """
 
     # Set a global timeout for all operations combined
     results = await asyncio.gather(

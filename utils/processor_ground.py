@@ -16,8 +16,17 @@ import utils.list_filter as lf
 def read_image_and_convert(output_dir, image_name):
     """
     Read a frame from the video capture and convert it to HSV color space.
-    This function is used for post-processing of the images that have been shot
-    and saved along with the telemetry data. This function is used in mission 1
+    Then sharpen the image using unsharp masking, which enhances the details
+    distorted by vibrations and other factors. Then, conver the image to HSV
+    color space, which is used for color-based object detection.
+
+    Args:
+        output_dir: The directory where the image is saved.
+        image_name: The name of the image file to be processed.
+
+    Returns:
+        hsv: The image converted to HSV color space.
+        frame: The original image frame after sharpening.
     """
 
     # Capture frame
@@ -32,7 +41,15 @@ def read_image_and_convert(output_dir, image_name):
 
 
 def unsharp_masking(image):
-    """Apply unsharp masking to enhance image details."""
+    """
+    Apply unsharp masking to enhance image details.
+    
+    Args:
+        image: The input image to be sharpened.
+
+    Returns:
+        sharpened: The sharpened image.
+    """
 
     # Create a Gaussian blur of the image
     blurred = cv2.GaussianBlur(image, (9, 9), 10.0)
@@ -48,10 +65,39 @@ def locate_object_and_save(
         colorProfile, condition, hsv,
         frame, min_area, detectedObject,
         pitch, roll, altitude, heading, lat_position, long_position, object_id):
+    
     """
-    Locate the object in the frame based on the specified color profile.
-    This function is used for post-processing of the images that have been shot
-    and saved along with the telemetry data. This function is used in mission1.
+    Processes a saved image and its associated telemetry data to detect objects 
+    of a specific color, classify their shape, determine their GPS position, 
+    and log the results.
+
+    This function is intended for post-processing during Mission 1. It segments 
+    the image using a specified HSV color profile to detect colored objects. 
+    If contours meet the specified area threshold, it calculates GPS coordinates 
+    using telemetry data, identifies the shape using a dedicated shape-detection 
+    routine, draws annotations onto the frame, and writes detection data to a CSV file.
+
+    Args:
+        output_dir: Directory path to store the processed data and CSV file.
+        image_filename: Name of the input image file being processed.
+        colorProfile: Integer code representing which color profile to use.
+        condition: Contextual data used for color profile adjustment.
+        hsv: The HSV-converted version of the original frame.
+        frame: The original BGR image frame for drawing annotations.
+        min_area: Minimum area threshold for an object to be considered valid.
+        detectedObject (bool): Flag indicating if an object was detected in the current image.
+        pitch: Pitch angle from telemetry data.
+        roll: Roll angle from telemetry data.
+        altitude: Altitude in meters at the time the image was captured.
+        heading: Compass heading in degrees.
+        lat_position: Latitude of the capture location.
+        long_position: Longitude of the capture location.
+        object_id: Counter for uniquely identifying detected objects.
+
+    Returns:
+        tuple:
+            - frame: The annotated image with bounding boxes and labels.
+            - object_id: Updated object ID counter after processing.
     """
     # mask for the specified color profile
     if colorProfile == 1:
@@ -134,6 +180,7 @@ def locate_object_and_save(
 
 def change_output_and_create_folder():
     """Create a directory for saving processed images.
+    A separate directory is used to store all processed images.
     """
 
     output_dir = f"Mission1/Found_Object"
@@ -148,18 +195,40 @@ def draw_rectangle_with_text(
         frame, name, x, y, w, h,
         latitude, longitude, shape, area, object_id):
     """
-    Draw a rectangle around the detected object and add text with its coordinates.
-    If the text goes out of bounds, adjust its position and color.
-    """
+        Draws a yellow bounding rectangle around a detected object and annotates it with text
+        containing the object's name and unique ID. If the annotation would fall outside the
+        image bounds, the position and color of the text are adjusted accordingly.
+
+        Args:
+            frame: The image on which to draw.
+            name: The label or color name of the detected object.
+            x: X-coordinate of the top-left corner of the object bounding box.
+            y: Y-coordinate of the top-left corner of the object bounding box.
+            w: Width of the bounding box.
+            h: Height of the bounding box.
+            latitude: GPS latitude of the object (unused in this function).
+            longitude: GPS longitude of the object (unused in this function).
+            shape: The detected shape of the object (unused in this function).
+            area: The area of the detected contour (unused in this function).
+            object_id: A unique identifier for the object.
+
+        Returns:
+            frame: The frame with the annotated bounding box and text.
+
+        Notes:
+            - latitude, longitude, area and shape will not be displayed in the
+                frame with current configuration
+        """
+
 
     # Set text properties
     font = cv2.FONT_HERSHEY_SIMPLEX
-    scale = 0.8
-    thickness = 2
+    scale = 3
+    thickness = 3
     text_colour = (0, 0, 255)  # Red
 
     # Write text and get width and size
-    text = f"({name}, area: {area}, id: {object_id})"
+    text = f"{name}, id: {object_id}"
     (text_width, text_height), _ = cv2.getTextSize(text, font, scale, thickness)
 
     # Set default text position
@@ -200,19 +269,36 @@ def remove_noise(mask):
 
 def main_mission_1_post_processing(sequence, condition, min_area):
     """
-    After acquiring the images, this function processes and locates
-    the object by reading the CSV files. In case an object is located, a 
-    second CSV files with the GPS object coordinates is created.
+    Executes post-processing for a sequence of captured images by locating colored objects,
+    calculating their GPS coordinates, and logging them to a CSV file.
+
+    The function loops through multiple image sequences containing saved telemetry data.
+    For each image, it reads its associated metadata, processes the image by detecting objects 
+    of different color profiles, and annotates them with bounding boxes. If objects are found 
+    that exceed a specified minimum area, their location is determined using telemetry input,
+    and a new CSV file is updated with their GPS coordinates and attributes.
+
+    Args:
+        sequence (int): Number of image sequences to process.
+        condition (Any): Parameter for adjusting color thresholds dynamically.
+        min_area (float): Minimum contour area required to consider an object valid.
+
+    Notes:
+        - Each sequence corresponds to a directory containing image and telemetry data.
+        - Images are annotated, saved, and an additional CSV file is created if any valid
+          object is found.
+        - The function supports up to 3 color profiles (skipping index 3 in the loop).
     """
 
-
     object_id = 0
+    
     # Read the CSV file with telemetry data
     for i in range(sequence+1):
         with open(f"Mission1/Bildsequenz_{i}/image_saved.csv", "r") as log_file:
             lines = log_file.readlines()
         print(f"Processing sequence {i}...")
         # Process each line in the CSV file
+        
         for line in lines:
             # Split the line at ", "" to extract data
             output_dir, image_filename, pitch, roll, altitude, heading, lat_position, long_position = line.strip().split(", ")
@@ -221,18 +307,19 @@ def main_mission_1_post_processing(sequence, condition, min_area):
             pitch, roll, altitude, heading, lat_position, long_position = float(pitch), float(
                 roll), float(altitude), float(heading), float(lat_position), float(long_position)
 
+            # Remove OS save path of Raspberry Pi
             base_path = '/media/aviator/INTENSO/'
             output_dir = output_dir.replace(base_path, '')
             
-
             # Read the image and convert it to HSV color space
             hsv, frame = read_image_and_convert(output_dir, image_filename)
             detectedObject = False
 
-            # Save every color in a separate directory
+            # Save every processed frame in seperate directory
             output_dir = change_output_and_create_folder()
 
             # Locate the object and save locations in CSV file
+            # Loop through colors blue, red, yellow
             for i in range(4):
                 if i == 3:
                     continue

@@ -1,3 +1,11 @@
+"""
+This module provides functions for filtering and processing lists of detected objects.
+It filters near-duplicate objects based on their GPS coordinates and color. The
+near-duplicates are a result of the over all concept, in which the drone
+saves multiple images at the same mission point, which are then processed
+on the ground computer.  
+"""
+
 import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
@@ -9,7 +17,24 @@ from haversine import haversine, Unit
 
 
 def filter_near_duplicates():
-# Load CSV with no headers
+    """
+    Filters out near-duplicate object detections from a CSV log based on GPS 
+    proximity and color similarity. This function reads a CSV file containing 
+    metadata about detected objects, including their GPS coordinates and color 
+    labels. It iteratively compares object entries using the Haversine formula 
+    to measure geographic distance. If two objects share the same color and are
+    located within 1.5 meters of each other, the second entry is flagged
+    as a duplicate and removed. The filtered results are saved to a new CSV file.
+
+    Notes:
+         - Input CSV: 'Mission1/Found_object/image_processed.csv' with no header.
+        - Output CSV: 'Mission1/Found_object/filtered_output.csv'
+        - Columns must include object ID, color, shape, and GPS coordinates.            
+        - Uses a keep-mask list to ensure original object ordering is preserved for evaluation.
+    """
+
+
+    # Load CSV with no headers
     df = pd.read_csv("Mission1/Found_object/image_processed.csv", header=None)
 
     # Set descriptive column names
@@ -21,10 +46,13 @@ def filter_near_duplicates():
     # Check for near-duplicates
     for i in range(len(df)):
         print(f"Checking row {i + 1}/{len(df)}")
+        
         if not keep_mask[i]:
             continue
+        
         coord_i = (df.at[i, "latitude"], df.at[i, "longitude"])
         color_i = df.at[i, "color"]
+        
         for j in range(i + 1, len(df)):
             print(f"Comparing with row {j + 1}/{len(df)}")
             coord_j = (df.at[j, "latitude"], df.at[j, "longitude"])

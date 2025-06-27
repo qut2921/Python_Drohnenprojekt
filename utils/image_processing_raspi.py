@@ -22,7 +22,13 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 
 def set_sensor_properties():
-    """Set sensor properties for the camera."""
+    """Set sensor properties for the camera.
+    This function sets the frame width and height and sensor format for
+    the camera.
+
+    Returns:
+        camera_config: A string that contains the camera configuration.
+    """
 
     frame_width = 1920  # Maximum is 4608
     frame_height = 1080  # Maximum 2592
@@ -34,6 +40,15 @@ def set_sensor_properties():
 
 
 def set_camera_controls(vid, weather_condition, logfile):
+    """Set camera controls based on the weather condition.
+    This function sets the exposure time and analog gain based on the weather condition.
+    
+    Args:
+        vid: the video capture object that is used to capture images
+        weather_condition: the weather condition that is used to set the camera controls
+        logfile: the logfile object that is used to log messages
+        
+    """
 
     if weather_condition == "cloudy":
         exposure_time = 1000  # Exposure time in microseconds (e.g., 2500 �s = 2.5ms)
@@ -56,10 +71,18 @@ def set_camera_controls(vid, weather_condition, logfile):
 def start_videoCapture(mission_id, weather_condition, logfile):
     """
     Set frame properties and start video capture.
-    For mission 1 the camera is set to preview mode, while for mission 2 and 3
-    the camera is set to video mode for higher frame rates, as the objects
-    have to be detected in real time.
-    The funciton also sets camera controls for the image capture in mission 1.
+    For mission 1 the camera is set to preview mode while for mission 2 and 3
+    the camera is set to still mode. The camera is configured with the sensor
+    properties that are defined in the function `set_sensor_properties`. The
+    function also sets the camera controls based on the weather condition.
+
+    Args:
+        mission_id: the mission ID that is used to set the camera configuration
+        weather_condition: the weather condition that is used to set the camera controls
+        logfile: the logfile object that is used to log messages
+
+    Returns:
+        vid: the video capture object that is used to capture images
     """
 
     # Initialize tuning file
@@ -97,17 +120,33 @@ def start_videoCapture(mission_id, weather_condition, logfile):
 
 
 def stop_videoCapture(vid, logfile):
+    """Stop the video capture and release the camera resources.
+    This function is used to stop the camera after the mission is finished.
+    
+    Args:
+        vid: the video capture object that is used to capture images
+        logfile: the logfile object that is used to log messages
+    """
     vid.stop()
     log.log("Camera stopped successfully", logfile)
 
 
 def capture_and_convert(vid):
     """
-    Read a frame from the video capture and convert it to HSV color space.
-    This function is used for live detection of the objects. Especially in 
-    mission 2 and 3 it is useful, where the position of the object is used to 
-    generate control inputs
+    Captures a single frame from a live video feed and converts it to HSV color space.
+
+    This function is primarily used in real-time object detection, particularly for Missions 2 and 3,
+    where object position data is used to generate control inputs for automated navigation or actuation.
+
+    Args:
+        vid: the video capture object that is used to capture images
+
+    Returns:
+        tuple:
+            - hsv: The frame converted to HSV color space, useful for color segmentation.
+            - frame: The original RGB frame for visualization or further processing.
     """
+
 
     # Capture frame
     frame = vid.capture_array()
@@ -122,8 +161,25 @@ def locate_object(
         pitch, roll, altitude, heading, lat_position, long_position):
     """
     Locate the object in the frame based on the specified color profile.
-    This function is used for post-processing of the images that have been shot
-    and saved along with the telemetry data. This function is used in mission1.
+    This function is used for live detection of the objects.
+    It uses the HSV color space to create a mask for the specified color profile.
+    The function also calculates the distance to the object in x and y direction
+    based on the drone's telemetry data.
+    
+    Args:
+        colorProfile: the color profile that is used to locate the object
+        condition: the weather condition that is used to set the color profile
+        hsv: the HSV image of the current frame
+        frame: the RGB image of the current frame
+        min_area: minimum area of the contour to be considered as an object
+        detectedObject: flag to indicate if an object has been detected
+        pitch, roll, altitude, heading, lat_position, long_position: telemetry data
+
+    Returns:
+        x_distance: the distance in x direction from the drone to the object
+        y_distance: the distance in y direction from the drone to the object
+        If no object is detected, returns None for both distances.
+
     """
 
     if colorProfile == 1:
@@ -138,10 +194,10 @@ def locate_object(
         name, hsv_lower, hsv_upper = colors.set_colorProfiles(colorProfile, condition)
         mask = cv2.inRange(hsv, hsv_lower, hsv_upper)
     
-    # remove noise from mask
+    # Remove noise from mask
     # mask = remove_noise(mask)
     
-    # find contours in the mask
+    # Find contours in the mask
     contours, _ = cv2.findContours(
         mask.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
 
@@ -156,7 +212,7 @@ def locate_object(
         if area >= min_area:
             x, y, w, h = cv2.boundingRect(biggest)
 
-            # calculate GPS coordinates
+            # Calculate GPS coordinates
             x_distance, y_distance, _, _, _, _ = gps.calculate_gps(
                 x,
                 y,
@@ -186,7 +242,12 @@ def locate_object(
 def create_directory(sequence, logfile):
     """Create a directory for saving images.
 
-    sequence: specifies the sequence of image savings based on the mission plan
+    Args:
+        sequence: the sequence number of the image capture, used to create a new directory
+        logfile: the logfile object that is used to log messages
+
+    Returns:
+        str: The path to the created directory.
     """
 
     output_dir = "/media/aviator/INTENSO/Mission1/Bildsequenz_{}".format(sequence)
@@ -198,7 +259,18 @@ def create_directory(sequence, logfile):
 
 
 def save_image(vid, frame_amount, output_dir, sequence):
-    """Save the captured image to the specified directory."""
+    """Save the captured image to the specified directory.
+    
+    Args:
+        vid: the video capture object that is used to capture images
+        frame_amount: the amount of frames that have been captured in the current sequence
+        output_dir: the directory where the image will be saved
+        sequence: the sequence number of the image capture, used to create a new directory,
+        and that represents the mission point in the mission plan
+
+    Returns:
+        str: The filename of the saved image.
+    """
 
     still_camera_config = vid.create_still_configuration(
         main=set_sensor_properties())
@@ -218,7 +290,17 @@ async def main_mission_1(drone, vid, sequence, logfile):
     The function just saves the image after specified time intervals and
     will not locate the object right away. The telemetry data is saved as
     timestamp for each image in order to calculate the distance later
-    into a CSV files. 
+    into a CSV files. For each mission point, a new directory is created
+    to save the images and telemetry data.
+
+    Args:
+        drone: the drone object that is used to communicate with the flight controller
+        vid: the video capture object that is used to capture images
+        sequence: the sequence number of the image capture, used to create a new directory
+        logfile: the logfile object that is used to log messages
+
+    Returns:
+        sequence: number of last point in the mission plan
     """
 
     # Initialize image saving variables
@@ -250,7 +332,7 @@ async def main_mission_1(drone, vid, sequence, logfile):
             image_count = 0  # Reset numbering for images in new directory
             sequence += 1
 
-            # Only save image every 1 seconds in the directory with
+            # Only save image every 0.5 seconds in the directory with
             # neccesary telemetry data
         if time.time() - last_time_saved >= save_delay:
             image_filename = save_image(
@@ -265,6 +347,8 @@ async def main_mission_1(drone, vid, sequence, logfile):
                     f"{output_dir}, {image_filename}, {pitch}, {roll}, {altitude}, {yaw}, {latitude}, {longitude}\n")
             print("Captured frame...")
 
+        
+        # Break out of loop when hover time is exceeded
         if time.time() - hover_time_stamp >= hover_time:
             log.log("Image capture finished", logfile)
             break
@@ -273,7 +357,24 @@ async def main_mission_1(drone, vid, sequence, logfile):
 
 
 async def main_mission_2(drone, vid, colorProfile, condition, logfile):
+    """
+    This function is used for the image processing in Mission 2 and 3.
+    It captures images from the video stream, processes them to locate the object
+    and calculates the distance in x and y direction from the drone to the object.
+    In later steps, the function will also be used to generate control inputs
+    based on the distance to the object.
 
+    Args:
+    drone: the drone object that is used to communicate with the flight controller
+    vid: the video capture object that is used to capture images
+    colorProfile: the color profile that is used to locate the object
+    condition: the weather condition that is used to set the color profile
+    logfile: the logfile object that is used to log messages
+
+    Returns:
+    x_distance: the distance in x direction from the drone to the object
+    y_distance: the distance in y direction from the drone to the object
+    """
     min_area = 1200
     detectedObject = False
 
@@ -281,7 +382,7 @@ async def main_mission_2(drone, vid, colorProfile, condition, logfile):
     latitude, longitude, altitude, roll, pitch, yaw, _, key = await cm.get_parameters_for_image_processing(drone)
     print({altitude})
 
-
+    # If telemetry data is lost, break out of the loop
     if key == 1:
         print("COMMUNICATION LOST!")
         return

@@ -176,4 +176,5 @@ cython_debug/
 *.jpg
 *.csv
 *.png
+*.xlsx
 output/

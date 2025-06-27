@@ -1,3 +1,23 @@
+"""
+Creates a side-by-side visual collage from two image files for comparison purposes.
+
+This script loads two images, optionally resizes them to a uniform dimension,
+places them side-by-side in a new blank image canvas (collage), and displays the result.
+Useful for visual analysis, calibration checks, or presentation of image pairings.
+This script was used to find color boundraries used for object detection.
+
+Steps:
+    - Load images from specified file paths.
+    - Resize images to a consistent size (600x400 pixels).
+    - Combine them horizontally into one canvas.
+    - Display the resulting collage in a separate window.
+
+Dependencies:
+    - PIL (Pillow)
+    - matplotlib (used only for import, not utilized in this version)
+
+"""
+
 from PIL import Image
 import matplotlib.pyplot as plt
 

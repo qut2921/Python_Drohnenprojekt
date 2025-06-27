@@ -12,15 +12,16 @@ from mavsdk import system
 async def mission_2(): 
     """
     1. connect to the drone
-    2. user confirmation before arming
-    3. arm the drone and set location
-    4. user confirmation before takeoff
-    5. takeoff to 15 meters
-    6. fly to location
-    7. check camera for target
-    7a. if target detected: activate precision land
-    8. no target detected: fly spiral search 
-    8a. precision land
+    2. arm the drone and set location
+    3. set home location
+    4. set target location
+    5. start camera
+    6. takeoff to 15 meters
+    7. fly to location
+    8. check camera for target
+    9a. if target detected: activate precision land
+    9. precision land
+
 
     """
     # Start logging
@@ -33,30 +34,29 @@ async def mission_2():
     # 1. connect to the drone
     drone = await cl.connect_drone(logfile)
     
-    # 2. arm the drone and set location
-    # arm the drone
+    # 2. arm the drone
     await cl.arm_drone(drone, logfile)
 
-    # set home location
+    # 3. set home location
     home = await drone.telemetry.home().__anext__()
     home_latitude = home.latitude_deg
     home_longitude = home.longitude_deg
     
-    # set target location
+    # 4. set target location
     mission_locations = [(48.76809213, 11.33690275)] # target location
 
-    # 3. Start camera
+    # 5. Start camera
     weatherConditions = "sunny"  # or "sunny"
     targetType = "orange"  # orange target
     color = colors.map_color_to_id(targetType) # convert target type to color ID
     vid = ip.start_videoCapture(mission_id, weatherConditions, logfile)
 
-    # 4. takeoff to 5 meters
+    # 6. takeoff to 5 meters
     target_altitude = 5.0
     await cl.default_takeoff(drone, target_altitude, logfile)
     await asyncio.sleep(1)
 
-    # 5. fly to location and climb to 15 meters
+    # 7. fly to location and climb to 15 meters
     target_altitude = 15.0
     latitude, longitude = mission_locations[0]
     log.log(
@@ -66,14 +66,15 @@ async def mission_2():
     await cl.goto_location(drone, latitude, longitude, target_altitude, logfile)
     await drone.action.hold()
 
-    # 6. if no target detected: fly spiral search 
     position = await drone.telemetry.position().__anext__()
     center_lat = position.latitude_deg
     center_lon = position.longitude_deg
 
+    # 8. check camera for target
     for i in range(4):
         x_distance, y_distance = await ip.main_mission_2(drone, vid, color, weatherConditions, logfile) # orange target
 
+    # 9a. fly spiral search when target is not detected
     if x_distance is None or y_distance is None:
         log.log("TARGET NOT FOUND", logfile)
         bool = await cl.fly_spiral_search(drone, center_lat,
@@ -94,7 +95,7 @@ async def mission_2():
         await cl.default_land_and_disarm(drone, logfile)
         ip.stop_videoCapture(vid, logfile)
     else:    
-        #8. precision land
+        # 9. precision land
         await cl.precision_land_velocity_pid_method(drone, vid, color, weatherConditions, land_mode, logfile) # oragne target
         ip.stop_videoCapture(vid, logfile)
 

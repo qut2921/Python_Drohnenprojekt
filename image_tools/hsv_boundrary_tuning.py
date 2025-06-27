@@ -1,10 +1,37 @@
+"""
+Interactive HSV Threshold Tuning Tool for Color Segmentation using OpenCV.
+
+This script loads an image and allows the user to interactively adjust HSV 
+(Hue, Saturation, Value) thresholds using OpenCV trackbars to fine-tune a 
+binary mask for color-based segmentation. It supports dual-range thresholding 
+for red (due to red hue spanning across the HSV hue boundary) and standard 
+single-range for other colors like blue or green. The result is shown in 
+real-time alongside the original image and HSV image.
+
+Usage:
+    - Adjust sliders for lower and upper HSV bounds to isolate the desired color region.
+    - For 'red', additional sliders will appear to cover the hue wraparound effect.
+    - Press 'q' to quit the interactive window.
+
+Args:
+    image_file (str): Path to the image to be processed.
+    color (str): Target color for thresholding. Supports 'red', 'blue', or 'green'.
+
+Dependencies:
+    - OpenCV
+    - NumPy
+
+Note:
+    You can uncomment `cv2.resize` if you wish to normalize image resolution for consistent tuning.
+"""
+
 import cv2
 import numpy as np
 
 
 #image_file = "BildsequenzTest_0/Calibration/feldweg_2.png"
 #image_file = "BildsequenzTest_0/Calibration/combined.png"
-image_file = "BildsequenzTest_0/Calibration/frame_0_309.jpg"
+image_file = "BildsequenzTest_0/Calibration/frame_1_1.jpg"
 color = "blue"  # Change to "blue" or "green" as needed
 
 def nothing(x):

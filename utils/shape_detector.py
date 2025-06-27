@@ -25,6 +25,31 @@ def create_roi(hsv, x, y, w, h):
 
 
 def detect_shape(frame, hsv,x, y, w, h, color, condition):
+     
+    """
+    Detects a geometric shape (triangle, rectangle, or circle) within a specified region
+    of interest (ROI) in a video frame, based on color segmentation in HSV color space.
+       
+     Parameters:
+        frame (numpy.ndarray): The BGR image frame in which the shape is to be detected.            
+        hsv (numpy.ndarray): The corresponding HSV image of the frame.
+        x (int): X-coordinate of the top-left corner of the ROI.
+        y (int): Y-coordinate of the top-left corner of the ROI.
+        w (int): Width of the ROI.
+        h (int): Height of the ROI.
+        color (int): Flag to determine which color profile to use (0 for mode 5, else mode 6).
+        condition (Any): Parameter passed to the color profile selection function, possibly to adapt color thresholds.
+
+     Returns:
+        tuple: A tuple containing:
+             - frame (numpy.ndarray): The modified frame with the detected shape drawn (if applicable).
+             - shape (str): The name of the detected shape ('Triangle', 'Rectangle', 'Circle', or 'Unknown').
+
+    Notes:
+        - Shapes are detected based on contours found in a binary mask filtered for black color.
+        - The function approximates contours to polygons and classifies shapes by the number of vertices.
+        - Detection messages are printed in German for debugging purposes.
+    """
     shape = "Unknown"
     roi_hsv = create_roi(hsv, x, y, w, h)
     roi = create_roi(frame, x, y, w, h)
